@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, BarChart2, Plus, ListFilter, FileText } from "lucide-react";
+import { Home, BarChart2, Plus, ListFilter, FileText, Users } from "lucide-react";
 
 import {
   Sidebar,
@@ -39,8 +39,13 @@ const navigationItems = [
   {
     title: "استيراد وتصدير",
     url: "/import-export",
-    icon: FileText, // Changed from FileImport to FileText which is available in lucide-react
+    icon: FileText,
   },
+  {
+    title: "إدارة المستخدمين",
+    url: "/users",
+    icon: Users,
+  }
 ];
 
 export function AppSidebar() {
@@ -50,7 +55,7 @@ export function AppSidebar() {
     <Sidebar side="right" variant="sidebar" collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>القائمة الرئيسية</SidebarGroupLabel>
+          <SidebarGroupLabel className="mt-16 text-primary font-bold">القائمة الرئيسية</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.map((item) => (
@@ -59,10 +64,11 @@ export function AppSidebar() {
                     asChild 
                     isActive={location.pathname === item.url}
                     tooltip={item.title}
+                    className="hover:bg-primary/10 transition-all duration-200"
                   >
-                    <Link to={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
+                    <Link to={item.url} className="flex items-center gap-3">
+                      <item.icon className="text-primary" />
+                      <span className="font-medium">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
