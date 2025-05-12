@@ -3,15 +3,17 @@ import React from "react";
 import { Activity } from "../types/activity";
 import { Link } from "react-router-dom";
 import { needsAlert } from "../data/mockData";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, Check, X } from "lucide-react";
 import { useActivities } from "../context/ActivitiesContext";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 
 interface ActivityCardProps {
   activity: Activity;
 }
 
 const ActivityCard: React.FC<ActivityCardProps> = ({ activity }) => {
-  const { deleteActivity } = useActivities();
+  const { deleteActivity, updateActivity } = useActivities();
   const alertLevel = needsAlert(activity);
 
   const getStatusClass = () => {
@@ -40,12 +42,26 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity }) => {
     }
   };
 
+  const handleConfirmActivity = () => {
+    updateActivity({
+      ...activity,
+      status: "completed"
+    });
+  };
+
+  const handlePostponeActivity = () => {
+    updateActivity({
+      ...activity,
+      status: "cancelled"
+    });
+  };
+
   const cardClasses = `bg-white rounded-lg shadow-sm p-4 mb-4 ${
     alertLevel === 1 ? "alert-1-day" : alertLevel === 3 ? "alert-3-days" : ""
   }`;
 
   return (
-    <div className={cardClasses}>
+    <Card className={cardClasses}>
       <div className="flex justify-between items-start">
         <h3 className="text-lg font-semibold mb-2">{activity.name}</h3>
         <span className={getStatusClass()}>{getStatusText()}</span>
@@ -73,36 +89,60 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity }) => {
         </div>
       </div>
 
-      <div className="flex justify-between mt-4">
-        <div className="space-x-2 flex">
-          <Link
-            to={`/edit-activity/${activity.id}`}
-            className="flex items-center px-3 py-1.5 bg-blue-50 text-primary rounded-md hover:bg-blue-100"
-          >
-            <Edit size={16} className="ml-1" />
-            <span>تعديل</span>
-          </Link>
-          <button
-            onClick={() => deleteActivity(activity.id)}
-            className="flex items-center px-3 py-1.5 bg-red-50 text-destructive rounded-md hover:bg-red-100"
-          >
-            <Trash2 size={16} className="ml-1" />
-            <span>حذف</span>
-          </button>
+      <div className="flex flex-col mt-4 gap-3">
+        <div className="flex justify-between">
+          <div className="space-x-2 flex">
+            <Link
+              to={`/edit-activity/${activity.id}`}
+              className="flex items-center px-3 py-1.5 bg-blue-50 text-primary rounded-md hover:bg-blue-100"
+            >
+              <Edit size={16} className="ml-1" />
+              <span>تعديل</span>
+            </Link>
+            <button
+              onClick={() => deleteActivity(activity.id)}
+              className="flex items-center px-3 py-1.5 bg-red-50 text-destructive rounded-md hover:bg-red-100"
+            >
+              <Trash2 size={16} className="ml-1" />
+              <span>حذف</span>
+            </button>
+          </div>
+
+          {alertLevel === 1 && (
+            <div className="text-red-600 text-sm font-medium">
+              تنبيه: باقي أقل من يوم على النشاط!
+            </div>
+          )}
+          {alertLevel === 3 && (
+            <div className="text-amber-600 text-sm font-medium">
+              تنبيه: باقي {alertLevel} أيام على النشاط
+            </div>
+          )}
         </div>
 
-        {alertLevel === 1 && (
-          <div className="text-red-600 text-sm font-medium">
-            تنبيه: باقي أقل من يوم على النشاط!
-          </div>
-        )}
-        {alertLevel === 3 && (
-          <div className="text-amber-600 text-sm font-medium">
-            تنبيه: باقي {alertLevel} أيام على النشاط
+        {/* Action buttons for confirm or postpone */}
+        {activity.status === "preparing" && (
+          <div className="grid grid-cols-2 gap-4 mt-2">
+            <Button 
+              variant="destructive"
+              className="flex items-center justify-center"
+              onClick={handlePostponeActivity}
+            >
+              <X size={18} className="ml-1" />
+              <span>تأجيل</span>
+            </Button>
+            <Button 
+              variant="default"
+              className="bg-green-500 hover:bg-green-600 flex items-center justify-center"
+              onClick={handleConfirmActivity}
+            >
+              <Check size={18} className="ml-1" />
+              <span>تأكيد</span>
+            </Button>
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 };
 
