@@ -8,6 +8,7 @@ import { ActivitiesProvider } from "./context/ActivitiesContext";
 import { AuthProvider } from "./context/AuthContext";
 import { SidebarProvider, SidebarInset, SidebarRail } from "@/components/ui/sidebar";
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 import AppSidebar from "./components/AppSidebar";
 import Index from "./pages/Index";
 import ActivitiesList from "./pages/ActivitiesList";
@@ -44,19 +45,22 @@ const AppContent = () => {
           <AppSidebar />
           <SidebarInset className="bg-gray-100">
             <SidebarRail />
-            <main className="flex-grow p-4">
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-                <Route path="/activities" element={<ProtectedRoute><ActivitiesList /></ProtectedRoute>} />
-                <Route path="/add-activity" element={<ProtectedRoute><AddActivity /></ProtectedRoute>} />
-                <Route path="/edit-activity/:id" element={<ProtectedRoute><EditActivity /></ProtectedRoute>} />
-                <Route path="/view-activity/:id" element={<ProtectedRoute><ViewActivity /></ProtectedRoute>} />
-                <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-                <Route path="/import-export" element={<ProtectedRoute><ImportExport /></ProtectedRoute>} />
-                <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+            <main className="flex-grow p-4 flex flex-col">
+              <div className="flex-grow">
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+                  <Route path="/activities" element={<ProtectedRoute><ActivitiesList /></ProtectedRoute>} />
+                  <Route path="/add-activity" element={<ProtectedRoute><AddActivity /></ProtectedRoute>} />
+                  <Route path="/edit-activity/:id" element={<ProtectedRoute><EditActivity /></ProtectedRoute>} />
+                  <Route path="/view-activity/:id" element={<ProtectedRoute><ViewActivity /></ProtectedRoute>} />
+                  <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+                  <Route path="/import-export" element={<ProtectedRoute><ImportExport /></ProtectedRoute>} />
+                  <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </div>
+              <Footer />
             </main>
           </SidebarInset>
         </div>
