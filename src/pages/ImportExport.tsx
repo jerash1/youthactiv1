@@ -9,14 +9,22 @@ const ImportExport = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const handleExport = () => {
-    // Create CSV content
-    const headers = "اسم النشاط,المركز,مكان التنفيذ,تاريخ البدء,تاريخ الانتهاء,الحالة,الوصف,عدد المشاركين المتوقع\n";
+    // Add BOM (Byte Order Mark) to ensure Excel recognizes UTF-8
+    const BOM = "\uFEFF";
+    
+    // Create CSV content with Arabic headers
+    const headers = BOM + "اسم النشاط,المركز,مكان التنفيذ,تاريخ البدء,تاريخ الانتهاء,الحالة,الوصف,عدد المشاركين المتوقع\n";
     const csvContent = activities.reduce((acc, activity) => {
+      // Clean description to avoid breaking CSV format (replace commas and newlines)
+      const cleanDescription = activity.description ? activity.description.replace(/,/g, ";").replace(/\n/g, " ") : "";
+      
       return (
         acc +
         `${activity.name},${activity.center},${activity.location},${activity.startDate},${activity.endDate},${
-          activity.status
-        },${activity.description || ""},${activity.expectedParticipants || ""}\n`
+          activity.status === "preparing" ? "في مرحلة الإعداد" : 
+          activity.status === "completed" ? "مكتمل" : 
+          "تم تأجيل النشاط"
+        },${cleanDescription},${activity.expectedParticipants || ""}\n`
       );
     }, headers);
 
@@ -25,7 +33,7 @@ const ImportExport = () => {
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", "activities.csv");
+    link.setAttribute("download", "أنشطة_المراكز.csv");
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -49,39 +57,90 @@ const ImportExport = () => {
     reader.onload = (e) => {
       if (e.target?.result) {
         const csvData = e.target.result as string;
-        const lines = csvData.split("\n");
+        // Handle BOM if present in the file
+        const content = csvData.charCodeAt(0) === 0xFEFF ? csvData.slice(1) : csvData;
+        const lines = content.split("\n");
+        
+        let importedCount = 0;
+        let errorCount = 0;
         
         // Skip header line
         for (let i = 1; i < lines.length; i++) {
           if (!lines[i].trim()) continue;
           
-          const columns = lines[i].split(",");
+          // Handle quoted fields that might contain commas
+          let columns = [];
+          let inQuote = false;
+          let currentField = "";
+          
+          for (let j = 0; j < lines[i].length; j++) {
+            const char = lines[i][j];
+            
+            if (char === '"' && (j === 0 || lines[i][j-1] !== '\\')) {
+              inQuote = !inQuote;
+            } else if (char === ',' && !inQuote) {
+              columns.push(currentField);
+              currentField = "";
+            } else {
+              currentField += char;
+            }
+          }
+          
+          // Add the last field
+          columns.push(currentField);
+          
+          // Make sure we have the minimum required fields
           if (columns.length >= 6) {
             try {
+              // Map status from Arabic text to code values
+              let status: "preparing" | "completed" | "cancelled";
+              
+              if (columns[5].includes("مرحلة الإعداد") || columns[5].includes("إعداد")) {
+                status = "preparing";
+              } else if (columns[5].includes("مكتمل") || columns[5].includes("تم")) {
+                status = "completed";
+              } else if (columns[5].includes("تأجيل") || columns[5].includes("ملغي")) {
+                status = "cancelled";
+              } else {
+                status = "preparing"; // Default
+              }
+              
               addActivity({
                 name: columns[0],
                 center: columns[1],
                 location: columns[2],
                 startDate: columns[3],
                 endDate: columns[4],
-                status: columns[5] as any,
+                status: status,
                 description: columns[6] || "",
                 expectedParticipants: Number(columns[7]) || 1,
               });
+              
+              importedCount++;
             } catch (error) {
-              console.error("Error importing row:", error);
+              console.error("Error importing row:", error, columns);
+              errorCount++;
             }
+          } else {
+            errorCount++;
           }
         }
         
-        toast.success("تم استيراد البيانات بنجاح");
+        if (importedCount > 0) {
+          toast.success(`تم استيراد ${importedCount} نشاط بنجاح`);
+        }
+        
+        if (errorCount > 0) {
+          toast.error(`لم يتم استيراد ${errorCount} نشاط بسبب أخطاء في البيانات`);
+        }
+        
         setSelectedFile(null);
         // Reset file input
         const fileInput = document.getElementById("fileInput") as HTMLInputElement;
         if (fileInput) fileInput.value = "";
       }
     };
-    reader.readAsText(selectedFile);
+    reader.readAsText(selectedFile, "UTF-8");
   };
 
   return (
@@ -92,12 +151,12 @@ const ImportExport = () => {
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-semibold mb-4">استيراد الأنشطة من ملف Excel</h2>
           <p className="text-gray-600 mb-6">
-            قم باستيراد قائمة الأنشطة من ملف Excel (.xlsx أو .xls). تأكد من أن الملف يتبع الهيكل
-            المطلوب.
+            قم باستيراد قائمة الأنشطة من ملف Excel (.xlsx أو .xls) أو CSV. تأكد من أن الملف يتبع الهيكل
+            المطلوب ويدعم اللغة العربية.
           </p>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">اختر ملف Excel</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">اختر ملف Excel أو CSV</label>
             <input
               id="fileInput"
               type="file"
@@ -110,11 +169,11 @@ const ImportExport = () => {
           <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-6">
             <h3 className="text-amber-700 font-medium mb-2">ملاحظات هامة للاستيراد:</h3>
             <ul className="space-y-2 text-sm text-amber-700 list-disc list-inside">
-              <li>يجب أن يحتوي الصف الأول على العناوين المطلوبة: اسم النشاط، المركز، الحالة، تاريخ النشاط</li>
-              <li>المشاركون اختيارية.</li>
+              <li>يجب أن يحتوي الصف الأول على العناوين بالعربية: اسم النشاط، المركز، مكان التنفيذ، تاريخ البدء، تاريخ الانتهاء، الحالة</li>
+              <li>يمكن استخدام القيم التالية للحالة: "في مرحلة الإعداد"، "مكتمل"، "تم تأجيل النشاط"</li>
+              <li>الوصف وعدد المشاركين اختياريان</li>
               <li>تنسيق التاريخ المقبول: DD/MM/YYYY, YYYY-MM-DD, MM/DD/YYYY</li>
-              <li>سيتم تجاهل أسماء المراكز وحالات النشاط غير المتطابقة مع القيم المتاحة في النظام.</li>
-              <li>سيتم فحص الصفوف التي تحتوي على بيانات غير صالحة أو مفقودة (راجع وحدة التحكم للتفاصيل).</li>
+              <li>تأكد من حفظ الملف بتنسيق UTF-8 لدعم اللغة العربية</li>
             </ul>
           </div>
 
@@ -128,18 +187,19 @@ const ImportExport = () => {
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6">
-          <h2 className="text-lg font-semibold mb-4">تصدير الأنشطة إلى ملف Excel</h2>
+          <h2 className="text-lg font-semibold mb-4">تصدير الأنشطة إلى ملف CSV</h2>
           <p className="text-gray-600 mb-6">
-            قم بتصدير جميع الأنشطة الحالية في النظام إلى ملف Excel. يمكن استخدام هذا الملف كنسخة احتياطية أو للمشاركة.
+            قم بتصدير جميع الأنشطة الحالية في النظام إلى ملف CSV بتنسيق يدعم اللغة العربية. يمكن استخدام هذا الملف كنسخة احتياطية أو للمشاركة.
           </p>
 
           <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
             <h3 className="text-blue-700 font-medium mb-2">خصائص ملف التصدير:</h3>
             <ul className="space-y-2 text-sm text-blue-700 list-disc list-inside">
-              <li>سيحتوي الملف على جميع بيانات الأنشطة الحالية.</li>
-              <li>سيتم تنسيق الأعمدة بشكل مناسب وسيكون اتجاه الورقة من اليمين لليسار.</li>
-              <li>سيتضمن تاريخ الإنشاء والتحديث لكل نشاط (إذا توفر).</li>
-              <li>أعمدة "مكان التنفيذ" و"الوصف" ستكون فارغة إذا لم يتم إدخالها.</li>
+              <li>سيحتوي الملف على جميع بيانات الأنشطة الحالية بالعربية</li>
+              <li>سيتم تنسيق العناوين والبيانات باللغة العربية</li>
+              <li>الملف المُصدر متوافق مع برامج Excel وGoogle Sheets</li>
+              <li>يحتوي على كافة حقول النشاط بما فيها الوصف وعدد المشاركين</li>
+              <li>سيتم تصدير حالات الأنشطة بالصيغة العربية (في مرحلة الإعداد، مكتمل، تم تأجيل النشاط)</li>
             </ul>
           </div>
 
