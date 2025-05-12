@@ -9,6 +9,11 @@ export type User = {
   isAdmin: boolean;
 };
 
+// Create a separate type that includes password for internal use
+type UserWithPassword = User & {
+  password: string;
+};
+
 type UserCredentials = {
   username: string;
   password: string;
@@ -16,7 +21,7 @@ type UserCredentials = {
 
 interface AuthContextType {
   user: User | null;
-  users: User[];
+  users: UserWithPassword[];
   login: (credentials: UserCredentials) => boolean;
   logout: () => void;
   addUser: (user: UserCredentials & { isAdmin?: boolean }) => void;
@@ -35,7 +40,7 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>(() => {
+  const [users, setUsers] = useState<UserWithPassword[]>(() => {
     const savedUsers = localStorage.getItem("users");
     const initialUsers = savedUsers 
       ? JSON.parse(savedUsers) 
@@ -63,6 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const foundUser = users.find(u => u.username === username && u.password === password);
     
     if (foundUser) {
+      // Create a user object without the password
       const { password, ...userWithoutPassword } = foundUser;
       setUser(userWithoutPassword);
       localStorage.setItem("currentUser", JSON.stringify(userWithoutPassword));
