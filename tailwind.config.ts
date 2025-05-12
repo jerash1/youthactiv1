@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -25,16 +26,30 @@ export default {
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
 				primary: {
-					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+					DEFAULT: '#1E88E5', // Main blue color from design
+					light: '#64B5F6',
+					dark: '#1565C0',
+					foreground: 'white'
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
 					foreground: 'hsl(var(--secondary-foreground))'
 				},
 				destructive: {
-					DEFAULT: 'hsl(var(--destructive))',
-					foreground: 'hsl(var(--destructive-foreground))'
+					DEFAULT: '#EF5350', // Red for delete actions
+					foreground: 'white'
+				},
+				success: {
+					DEFAULT: '#66BB6A', // Green for completed activities
+					foreground: 'white'
+				},
+				warning: {
+					DEFAULT: '#FFCA28', // Yellow for warning states
+					foreground: 'black'
+				},
+				info: {
+					DEFAULT: '#29B6F6', // Light blue for info
+					foreground: 'white'
 				},
 				muted: {
 					DEFAULT: 'hsl(var(--muted))',
