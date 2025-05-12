@@ -5,7 +5,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ActivitiesProvider } from "./context/ActivitiesContext";
+import { SidebarProvider, SidebarInset, SidebarRail } from "@/components/ui/sidebar";
 import Navbar from "./components/Navbar";
+import AppSidebar from "./components/AppSidebar";
 import Index from "./pages/Index";
 import ActivitiesList from "./pages/ActivitiesList";
 import AddActivity from "./pages/AddActivity";
@@ -25,22 +27,30 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <div className="flex flex-col min-h-screen">
-            <Navbar />
-            <main className="flex-grow">
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/activities" element={<ActivitiesList />} />
-                <Route path="/add-activity" element={<AddActivity />} />
-                <Route path="/edit-activity/:id" element={<EditActivity />} />
-                <Route path="/view-activity/:id" element={<ViewActivity />} />
-                <Route path="/reports" element={<Reports />} />
-                <Route path="/import-export" element={<ImportExport />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </main>
-          </div>
+          <SidebarProvider>
+            <div className="flex flex-col min-h-screen w-full">
+              <Navbar />
+              <div className="flex flex-1">
+                <AppSidebar />
+                <SidebarInset className="bg-gray-100">
+                  <SidebarRail />
+                  <main className="flex-grow p-4">
+                    <Routes>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/activities" element={<ActivitiesList />} />
+                      <Route path="/add-activity" element={<AddActivity />} />
+                      <Route path="/edit-activity/:id" element={<EditActivity />} />
+                      <Route path="/view-activity/:id" element={<ViewActivity />} />
+                      <Route path="/reports" element={<Reports />} />
+                      <Route path="/import-export" element={<ImportExport />} />
+                      <Route path="/login" element={<Login />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </main>
+                </SidebarInset>
+              </div>
+            </div>
+          </SidebarProvider>
         </BrowserRouter>
       </ActivitiesProvider>
     </TooltipProvider>
