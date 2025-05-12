@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, BarChart2, Plus, ListFilter, FileImport } from "lucide-react";
+import { Home, BarChart2, Plus, ListFilter, FileText } from "lucide-react";
 
 import {
   Sidebar,
@@ -39,7 +39,7 @@ const navigationItems = [
   {
     title: "استيراد وتصدير",
     url: "/import-export",
-    icon: FileImport,
+    icon: FileText, // Changed from FileImport to FileText which is available in lucide-react
   },
 ];
 
