@@ -82,9 +82,13 @@ export const ActivitiesProvider: React.FC<{ children: ReactNode }> = ({ children
         }
         
         // تحويل البيانات إلى تنسيق التطبيق
-        const formattedActivities = activitiesData.map((item: any) => 
-          mapSupabaseToActivity(item, item.centers.name)
-        );
+        const formattedActivities = activitiesData.map((item: any) => {
+          // تأكد من أن قيمة status هي من القيم المتوقعة
+          const status = validateStatus(item.status);
+          // إنشاء نسخة من العنصر مع قيمة status الصحيحة
+          const validatedItem = { ...item, status };
+          return mapSupabaseToActivity(validatedItem, item.centers.name);
+        });
         
         setActivities(formattedActivities);
       } catch (error) {
@@ -103,6 +107,14 @@ export const ActivitiesProvider: React.FC<{ children: ReactNode }> = ({ children
     
     fetchData();
   }, []);
+
+  // التأكد من أن قيمة status مناسبة
+  const validateStatus = (status: string): ActivityStatus => {
+    const validStatuses: ActivityStatus[] = ["preparing", "completed", "cancelled"];
+    return validStatuses.includes(status as ActivityStatus) 
+      ? (status as ActivityStatus) 
+      : "preparing"; // القيمة الافتراضية إذا كانت القيمة غير صالحة
+  };
 
   // إضافة نشاط جديد
   const addActivity = async (activityData: Omit<Activity, "id">) => {
