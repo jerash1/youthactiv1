@@ -3,12 +3,16 @@ import React, { useState } from "react";
 import { useActivities } from "../context/ActivitiesContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { supabase } from "../integrations/supabase/client";
+import { Loader2 } from "lucide-react";
 
 const ImportExport = () => {
-  const { activities, addActivity } = useActivities();
+  const { activities, addActivity, loading } = useActivities();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
-  const handleExport = () => {
+  const handleExport = async () => {
     // Add BOM (Byte Order Mark) to ensure Excel recognizes UTF-8
     const BOM = "\uFEFF";
     
@@ -41,20 +45,17 @@ const ImportExport = () => {
     toast.success("تم تصدير البيانات بنجاح");
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0]);
-    }
-  };
-
-  const handleImport = () => {
+  // استيراد البيانات من ملف CSV إلى Supabase
+  const handleImport = async () => {
     if (!selectedFile) {
       toast.error("الرجاء اختيار ملف للاستيراد");
       return;
     }
 
+    setImporting(true);
+    
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       if (e.target?.result) {
         const csvData = e.target.result as string;
         // Handle BOM if present in the file
@@ -105,7 +106,7 @@ const ImportExport = () => {
                 status = "preparing"; // Default
               }
               
-              addActivity({
+              await addActivity({
                 name: columns[0],
                 center: columns[1],
                 location: columns[2],
@@ -139,9 +140,26 @@ const ImportExport = () => {
         const fileInput = document.getElementById("fileInput") as HTMLInputElement;
         if (fileInput) fileInput.value = "";
       }
+      setImporting(false);
     };
     reader.readAsText(selectedFile, "UTF-8");
   };
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  // إذا كان التطبيق في حالة تحميل البيانات، اعرض مؤشر التحميل
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto p-4 flex flex-col items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p className="text-gray-600">جاري تحميل البيانات...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto p-4">
@@ -180,9 +198,16 @@ const ImportExport = () => {
           <Button
             onClick={handleImport}
             className="w-full bg-primary text-white"
-            disabled={!selectedFile}
+            disabled={!selectedFile || importing}
           >
-            استيراد البيانات
+            {importing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                جاري الاستيراد...
+              </>
+            ) : (
+              "استيراد البيانات"
+            )}
           </Button>
         </div>
 
@@ -206,9 +231,16 @@ const ImportExport = () => {
           <Button
             onClick={handleExport}
             className="w-full bg-primary text-white"
-            disabled={activities.length === 0}
+            disabled={activities.length === 0 || exporting}
           >
-            تصدير جميع الأنشطة
+            {exporting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                جاري التصدير...
+              </>
+            ) : (
+              "تصدير جميع الأنشطة"
+            )}
           </Button>
           {activities.length === 0 && (
             <p className="text-center text-gray-500 mt-2 text-sm">لا توجد أنشطة مسجلة للتصدير حالياً.</p>

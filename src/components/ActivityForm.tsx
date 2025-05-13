@@ -5,8 +5,8 @@ import { Activity } from "../types/activity";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Loader2 } from "lucide-react";
 
 interface ActivityFormProps {
   activity?: Activity;
@@ -14,7 +14,7 @@ interface ActivityFormProps {
 }
 
 const ActivityForm: React.FC<ActivityFormProps> = ({ activity, isEditing = false }) => {
-  const { addActivity, updateActivity, availableCenters } = useActivities();
+  const { addActivity, updateActivity, availableCenters, loading } = useActivities();
   const navigate = useNavigate();
 
   const [formValues, setFormValues] = useState<Omit<Activity, "id">>({
@@ -27,6 +27,8 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ activity, isEditing = false
     description: "",
     expectedParticipants: 1,
   });
+  
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (isEditing && activity) {
@@ -40,25 +42,45 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ activity, isEditing = false
         description: activity.description || "",
         expectedParticipants: activity.expectedParticipants || 1,
       });
+    } else if (availableCenters.length > 0) {
+      // تعيين المركز الافتراضي إذا كان هناك مراكز متاحة
+      setFormValues(prev => ({
+        ...prev,
+        center: availableCenters[0].name
+      }));
     }
-  }, [isEditing, activity]);
+  }, [isEditing, activity, availableCenters]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormValues((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
     
-    if (isEditing && activity) {
-      updateActivity({ ...formValues, id: activity.id });
-    } else {
-      addActivity(formValues);
+    try {
+      if (isEditing && activity) {
+        await updateActivity({ ...formValues, id: activity.id });
+      } else {
+        await addActivity(formValues);
+      }
+      navigate("/activities");
+    } catch (error) {
+      console.error("Error submitting form:", error);
+    } finally {
+      setSubmitting(false);
     }
-    
-    navigate("/activities");
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -86,7 +108,6 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ activity, isEditing = false
             required
             className="w-full p-2 border rounded-md bg-white"
           >
-            <option value="">اختر المركز</option>
             {availableCenters.map((center) => (
               <option key={center.id} value={center.name}>
                 {center.name}
@@ -181,13 +202,25 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ activity, isEditing = false
       </div>
 
       <div className="flex space-x-4 space-x-reverse">
-        <Button type="submit" className="bg-primary text-white">
-          {isEditing ? "تحديث النشاط" : "حفظ النشاط"}
+        <Button 
+          type="submit" 
+          className="bg-primary text-white" 
+          disabled={submitting}
+        >
+          {submitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              {isEditing ? "جاري التحديث..." : "جاري الحفظ..."}
+            </>
+          ) : (
+            isEditing ? "تحديث النشاط" : "حفظ النشاط"
+          )}
         </Button>
         <Button
           type="button"
           onClick={() => navigate(-1)}
           className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+          disabled={submitting}
         >
           إلغاء
         </Button>
