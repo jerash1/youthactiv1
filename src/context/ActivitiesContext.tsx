@@ -5,6 +5,7 @@ import { Center, SupabaseActivity } from "../types/supabase";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "../integrations/supabase/client";
+import { mapSupabaseToActivity, mapActivityToSupabase, validateStatus } from "../utils/activitiesUtils";
 
 interface ActivitiesContextType {
   activities: Activity[];
@@ -23,35 +24,6 @@ export const ActivitiesProvider: React.FC<{ children: ReactNode }> = ({ children
   const [activities, setActivities] = useState<Activity[]>([]);
   const [availableCenters, setAvailableCenters] = useState<Center[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  
-  // تحويل من تنسيق Supabase إلى تنسيق التطبيق
-  const mapSupabaseToActivity = (supaActivity: SupabaseActivity, centerName: string): Activity => {
-    return {
-      id: supaActivity.id,
-      name: supaActivity.name,
-      center: centerName,
-      location: supaActivity.location,
-      startDate: new Date(supaActivity.start_date).toISOString().split('T')[0],
-      endDate: new Date(supaActivity.end_date).toISOString().split('T')[0],
-      status: supaActivity.status as ActivityStatus,
-      description: supaActivity.description || undefined,
-      expectedParticipants: supaActivity.expected_participants || undefined
-    };
-  };
-  
-  // تحويل من تنسيق التطبيق إلى تنسيق Supabase
-  const mapActivityToSupabase = (activity: Omit<Activity, "id">, centerId: number): Omit<SupabaseActivity, "id" | "created_at" | "updated_at"> => {
-    return {
-      name: activity.name,
-      center_id: centerId,
-      location: activity.location,
-      start_date: new Date(activity.startDate).toISOString(),
-      end_date: new Date(activity.endDate).toISOString(),
-      status: activity.status,
-      description: activity.description || null,
-      expected_participants: activity.expectedParticipants || null
-    };
-  };
 
   // جلب البيانات من Supabase عند تحميل التطبيق
   useEffect(() => {
@@ -107,14 +79,6 @@ export const ActivitiesProvider: React.FC<{ children: ReactNode }> = ({ children
     
     fetchData();
   }, []);
-
-  // التأكد من أن قيمة status مناسبة
-  const validateStatus = (status: string): ActivityStatus => {
-    const validStatuses: ActivityStatus[] = ["preparing", "completed", "cancelled"];
-    return validStatuses.includes(status as ActivityStatus) 
-      ? (status as ActivityStatus) 
-      : "preparing"; // القيمة الافتراضية إذا كانت القيمة غير صالحة
-  };
 
   // إضافة نشاط جديد
   const addActivity = async (activityData: Omit<Activity, "id">) => {
