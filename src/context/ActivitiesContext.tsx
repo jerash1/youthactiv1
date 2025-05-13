@@ -109,7 +109,8 @@ export const ActivitiesProvider: React.FC<{ children: ReactNode }> = ({ children
       // إضافة النشاط الجديد إلى حالة التطبيق
       const status = validateStatus(data.status);
       const validatedData = { ...data, status };
-      const newActivity = mapSupabaseToActivity(validatedData, validatedData.centers.name);
+      const newActivity = mapSupabaseToActivity(validatedData, data.centers.name);
+      
       setActivities((prev) => [...prev, newActivity]);
       toast.success("تم إضافة النشاط بنجاح");
     } catch (error) {
