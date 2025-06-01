@@ -1,4 +1,5 @@
 
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -55,9 +56,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 // المكون الرئيسي للتطبيق
 const AppContent = () => {
   return (
-    <div className="flex flex-col min-h-screen w-full">
-      <Navbar />
-      <SidebarProvider>
+    <SidebarProvider>
+      <div className="flex flex-col min-h-screen w-full">
+        <Navbar />
         <div className="flex flex-1 relative">
           <AppSidebar />
           <SidebarInset className="bg-gray-100 flex-1">
@@ -82,9 +83,10 @@ const AppContent = () => {
             </main>
           </SidebarInset>
         </div>
-      </SidebarProvider>
-    </div>
+      </div>
+    </SidebarProvider>
   );
 };
 
 export default App;
+
