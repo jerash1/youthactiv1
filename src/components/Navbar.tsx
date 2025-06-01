@@ -11,10 +11,15 @@ const Navbar = () => {
   return (
     <header className="bg-gradient-to-r from-primary/90 to-primary text-white p-4 shadow-md">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center">
           <SidebarTrigger className="text-white hover:bg-white/20 rounded-md p-1.5" />
+        </div>
+        
+        {/* عنوان التطبيق في المنتصف */}
+        <div className="absolute left-1/2 transform -translate-x-1/2">
           <div className="text-2xl font-bold">برنامج تتبع أنشطة المراكز الشبابية</div>
         </div>
+        
         <div className="flex items-center gap-4">
           {user ? (
             <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm">
