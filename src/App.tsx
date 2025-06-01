@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,10 +18,27 @@ import Reports from "./pages/Reports";
 import ImportExport from "./pages/ImportExport";
 import Login from "./pages/Login";
 import Users from "./pages/Users";
+import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./context/AuthContext";
 
 const queryClient = new QueryClient();
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <ActivitiesProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <Toaster />
+            <Sonner />
+            <AppContent />
+          </AuthProvider>
+        </BrowserRouter>
+      </ActivitiesProvider>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 // مكون محمي للتأكد من تسجيل الدخول
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -57,6 +73,7 @@ const AppContent = () => {
                   <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
                   <Route path="/import-export" element={<ProtectedRoute><ImportExport /></ProtectedRoute>} />
                   <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
+                  <Route path="/user-management" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </div>
@@ -68,21 +85,5 @@ const AppContent = () => {
     </SidebarProvider>
   );
 };
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <ActivitiesProvider>
-        <BrowserRouter>
-          <AuthProvider>
-            <Toaster />
-            <Sonner />
-            <AppContent />
-          </AuthProvider>
-        </BrowserRouter>
-      </ActivitiesProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
 
 export default App;

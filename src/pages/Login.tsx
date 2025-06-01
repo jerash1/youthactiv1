@@ -68,12 +68,6 @@ const Login = () => {
             <Button type="submit" className="w-full bg-primary text-white">
               تسجيل الدخول
             </Button>
-
-            <div className="text-center text-sm text-gray-500 mt-4">
-              <p>للتجربة، استخدم:</p>
-              <p>اسم المستخدم: admin</p>
-              <p>كلمة المرور: admin</p>
-            </div>
           </form>
         </CardContent>
       </Card>
