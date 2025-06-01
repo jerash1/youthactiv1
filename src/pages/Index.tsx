@@ -5,7 +5,7 @@ import { useActivities } from "../context/ActivitiesContext";
 import ActivityCard from "../components/ActivityCard";
 import ActivityStats from "../components/ActivityStats";
 import { getDaysRemaining, needsAlert } from "../data/mockData";
-import { Plus, Calendar } from "lucide-react";
+import { Plus, Calendar, AlertTriangle } from "lucide-react";
 
 const Index = () => {
   const { activities } = useActivities();
@@ -55,8 +55,9 @@ const Index = () => {
           <div className="mb-8">
             <div className="flex items-center mb-6">
               <div className="w-1 h-8 bg-gradient-to-b from-red-500 to-red-600 rounded-full ml-3"></div>
+              <AlertTriangle className="w-6 h-6 text-red-500 ml-2" />
               <h2 className="text-2xl font-bold text-gray-800">
-                أنشطة تحتاج انتباه عاجل
+                الأنشطة القادمة للمتابعة
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -64,7 +65,8 @@ const Index = () => {
                 <ActivityCard 
                   key={activity.id} 
                   activity={activity} 
-                  showActions={false}
+                  showActions={true}
+                  showQuickActions={true}
                 />
               ))}
             </div>

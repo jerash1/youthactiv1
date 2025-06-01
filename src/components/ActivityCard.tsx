@@ -11,9 +11,14 @@ import { Card } from "./ui/card";
 interface ActivityCardProps {
   activity: Activity;
   showActions?: boolean;
+  showQuickActions?: boolean;
 }
 
-const ActivityCard: React.FC<ActivityCardProps> = ({ activity, showActions = true }) => {
+const ActivityCard: React.FC<ActivityCardProps> = ({ 
+  activity, 
+  showActions = true, 
+  showQuickActions = false 
+}) => {
   const { deleteActivity, updateActivity } = useActivities();
   const alertLevel = needsAlert(activity);
   const navigate = useNavigate();
@@ -143,8 +148,31 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, showActions = tru
           </div>
         )}
 
-        {/* Action Buttons - Only show if showActions is true */}
-        {showActions && (
+        {/* Quick Action Buttons for alert activities */}
+        {showQuickActions && activity.status === "preparing" && (
+          <div className="mb-4">
+            <div className="flex gap-2">
+              <Button 
+                variant="destructive"
+                className="flex-1 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
+                onClick={handlePostponeActivity}
+              >
+                <X size={16} className="ml-2" />
+                <span>تأجيل</span>
+              </Button>
+              <Button 
+                className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 rounded-xl"
+                onClick={handleConfirmActivity}
+              >
+                <Check size={16} className="ml-2" />
+                <span>مكتمل</span>
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Regular Action Buttons - Only show if showActions is true and not showing quick actions */}
+        {showActions && !showQuickActions && (
           <div className="space-y-3">
             <div className="flex gap-2">
               <Link
