@@ -3,9 +3,10 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useActivities } from "../context/ActivitiesContext";
 import ActivityCard from "../components/ActivityCard";
+import CompactActivityCard from "../components/CompactActivityCard";
 import ActivityStats from "../components/ActivityStats";
 import { getDaysRemaining, needsAlert } from "../data/mockData";
-import { Plus, Calendar, AlertTriangle } from "lucide-react";
+import { Plus, Calendar, AlertTriangle, Clock } from "lucide-react";
 
 const Index = () => {
   const { activities } = useActivities();
@@ -15,7 +16,7 @@ const Index = () => {
     (activity) => getDaysRemaining(activity.startDate) >= 0
   ).sort((a, b) => {
     return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
-  }).slice(0, 6);
+  });
 
   // Filter activities that need attention (1 or 3 days remaining)
   const alertActivities = activities.filter(activity => needsAlert(activity) !== null);
@@ -78,6 +79,7 @@ const Index = () => {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
               <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full ml-3"></div>
+              <Clock className="w-6 h-6 text-blue-500 ml-2" />
               <h2 className="text-2xl font-bold text-gray-800">الأنشطة القادمة</h2>
             </div>
             <Link
@@ -89,12 +91,11 @@ const Index = () => {
           </div>
 
           {upcomingActivities.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {upcomingActivities.map((activity) => (
-                <ActivityCard 
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+              {upcomingActivities.slice(0, 10).map((activity) => (
+                <CompactActivityCard 
                   key={activity.id} 
                   activity={activity} 
-                  showActions={false}
                 />
               ))}
             </div>
