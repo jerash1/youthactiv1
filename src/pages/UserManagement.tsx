@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Card, 
   CardContent, 
@@ -32,15 +32,36 @@ import { useAuth } from "../context/AuthContext";
 import { Navigate } from "react-router-dom";
 import { Trash, UserPlus, Shield, User } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "../integrations/supabase/client";
 
 const UserManagement = () => {
-  const { user, users, addUser, deleteUser } = useAuth();
-  const [newUsername, setNewUsername] = useState("");
+  const { user, users, deleteUser, fetchUsers, loading } = useAuth();
+  const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [newUsername, setNewUsername] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
 
-  // إذا لم يكن المستخدم مسجل الدخول أو ليس لديه صلاحيات الإدارة، توجيهه إلى صفحة تسجيل الدخول
+  // جلب المستخدمين عند تحميل الصفحة
+  useEffect(() => {
+    if (user?.isAdmin) {
+      fetchUsers();
+    }
+  }, [user?.isAdmin, fetchUsers]);
+
+  // التحقق من الصلاحيات
+  if (loading) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-gray-600">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
     return <Navigate to="/login" />;
   }
@@ -50,21 +71,69 @@ const UserManagement = () => {
     return <Navigate to="/" />;
   }
 
-  const handleAddUser = () => {
-    if (!newUsername || !newPassword) {
-      toast.error("يرجى إدخال اسم المستخدم وكلمة المرور");
+  const handleAddUser = async () => {
+    if (!newEmail || !newPassword) {
+      toast.error("يرجى إدخال البريد الإلكتروني وكلمة المرور");
       return;
     }
     
-    addUser({ username: newUsername, password: newPassword, isAdmin });
-    setNewUsername("");
-    setNewPassword("");
-    setIsAdmin(false);
-    setDialogOpen(false);
+    setCreateLoading(true);
+    
+    try {
+      // إنشاء المستخدم في Supabase Auth
+      const { data, error } = await supabase.auth.admin.createUser({
+        email: newEmail,
+        password: newPassword,
+        user_metadata: {
+          username: newUsername || newEmail.split('@')[0]
+        },
+        email_confirm: true
+      });
+
+      if (error) {
+        console.error('Create user error:', error);
+        toast.error("خطأ في إنشاء المستخدم: " + error.message);
+        return;
+      }
+
+      if (data.user) {
+        // تحديث صلاحيات المدير إذا لزم الأمر
+        if (isAdmin) {
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ is_admin: true })
+            .eq('id', data.user.id);
+
+          if (updateError) {
+            console.error('Update admin status error:', updateError);
+            toast.error("تم إنشاء المستخدم ولكن فشل في تحديث صلاحيات المدير");
+          }
+        }
+
+        await fetchUsers();
+        setNewEmail("");
+        setNewPassword("");
+        setNewUsername("");
+        setIsAdmin(false);
+        setDialogOpen(false);
+        toast.success("تم إنشاء المستخدم بنجاح");
+      }
+    } catch (error) {
+      console.error('Create user error:', error);
+      toast.error("خطأ في إنشاء المستخدم");
+    } finally {
+      setCreateLoading(false);
+    }
   };
 
-  const adminUsers = users.filter(u => u.isAdmin);
-  const regularUsers = users.filter(u => !u.isAdmin);
+  const handleDeleteUser = async (userId: string) => {
+    if (window.confirm("هل أنت متأكد من حذف هذا المستخدم؟")) {
+      await deleteUser(userId);
+    }
+  };
+
+  const adminUsers = users.filter(u => u.is_admin);
+  const regularUsers = users.filter(u => !u.is_admin);
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -139,7 +208,18 @@ const UserManagement = () => {
                       id="username"
                       value={newUsername}
                       onChange={(e) => setNewUsername(e.target.value)}
-                      placeholder="أدخل اسم المستخدم"
+                      placeholder="أدخل اسم المستخدم (اختياري)"
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="email" className="text-sm font-medium">البريد الإلكتروني</label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      placeholder="أدخل البريد الإلكتروني"
                       className="w-full"
                     />
                   </div>
@@ -170,9 +250,10 @@ const UserManagement = () => {
                   <Button 
                     type="submit" 
                     onClick={handleAddUser}
+                    disabled={createLoading}
                     className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                   >
-                    حفظ المستخدم
+                    {createLoading ? "جاري الإنشاء..." : "حفظ المستخدم"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -190,16 +271,17 @@ const UserManagement = () => {
                   <TableHead className="font-bold text-gray-700">اسم المستخدم</TableHead>
                   <TableHead className="font-bold text-gray-700">نوع الحساب</TableHead>
                   <TableHead className="font-bold text-gray-700">الصلاحيات</TableHead>
+                  <TableHead className="font-bold text-gray-700">تاريخ الإنشاء</TableHead>
                   <TableHead className="font-bold text-gray-700">الإجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((u) => (
-                  <TableRow key={u.id} className="hover:bg-gray-50 transition-colors">
-                    <TableCell className="font-medium text-gray-800">{u.username}</TableCell>
+                {users.map((profile) => (
+                  <TableRow key={profile.id} className="hover:bg-gray-50 transition-colors">
+                    <TableCell className="font-medium text-gray-800">{profile.username}</TableCell>
                     <TableCell>
                       <div className="flex items-center">
-                        {u.isAdmin ? (
+                        {profile.is_admin ? (
                           <>
                             <Shield size={16} className="ml-2 text-purple-600" />
                             <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-sm font-medium">
@@ -217,14 +299,17 @@ const UserManagement = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-gray-600">
-                      {u.isAdmin ? "إدارة كاملة للنظام" : "عرض وإدارة الأنشطة"}
+                      {profile.is_admin ? "إدارة كاملة للنظام" : "عرض وإدارة الأنشطة"}
+                    </TableCell>
+                    <TableCell className="text-gray-600">
+                      {new Date(profile.created_at).toLocaleDateString('ar')}
                     </TableCell>
                     <TableCell>
                       <Button 
                         variant="destructive" 
                         size="sm" 
-                        onClick={() => deleteUser(u.id)}
-                        disabled={u.id === user.id}
+                        onClick={() => handleDeleteUser(profile.id)}
+                        disabled={profile.id === user.id}
                         className="flex items-center gap-1 shadow-md hover:shadow-lg transition-shadow"
                       >
                         <Trash size={14} />

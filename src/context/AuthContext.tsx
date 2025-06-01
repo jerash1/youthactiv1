@@ -2,30 +2,39 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { supabase } from "../integrations/supabase/client";
+import { User, Session } from "@supabase/supabase-js";
 
-export type User = {
+export type AppUser = {
   id: string;
   username: string;
   isAdmin: boolean;
+  email?: string;
 };
 
-// Create a separate type that includes password for internal use
-type UserWithPassword = User & {
-  password: string;
+export type Profile = {
+  id: string;
+  username: string;
+  is_admin: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 type UserCredentials = {
-  username: string;
+  email: string;
   password: string;
+  username?: string;
 };
 
 interface AuthContextType {
-  user: User | null;
-  users: UserWithPassword[];
-  login: (credentials: UserCredentials) => boolean;
+  user: AppUser | null;
+  users: Profile[];
+  login: (credentials: UserCredentials) => Promise<boolean>;
   logout: () => void;
-  addUser: (user: UserCredentials & { isAdmin?: boolean }) => void;
-  deleteUser: (id: string) => void;
+  signUp: (credentials: UserCredentials) => Promise<boolean>;
+  deleteUser: (id: string) => Promise<void>;
+  fetchUsers: () => Promise<void>;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -39,89 +48,253 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<UserWithPassword[]>(() => {
-    const savedUsers = localStorage.getItem("users");
-    const initialUsers = savedUsers 
-      ? JSON.parse(savedUsers) 
-      : [{ id: "1", username: "admin", password: "admin", isAdmin: true }];
-    return initialUsers;
-  });
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [users, setUsers] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // حفظ المستخدمين في التخزين المحلي عند تغييرهم
-  useEffect(() => {
-    localStorage.setItem("users", JSON.stringify(users));
-  }, [users]);
+  // جلب بيانات المستخدم من جدول profiles
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-  // تحقق من وجود مستخدم مسجل الدخول عند تحميل التطبيق
-  useEffect(() => {
-    const loggedInUser = localStorage.getItem("currentUser");
-    if (loggedInUser) {
-      setUser(JSON.parse(loggedInUser));
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return null;
+      }
+
+      return profile;
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
+      return null;
     }
-  }, []);
+  };
+
+  // جلب جميع المستخدمين (للمدراء فقط)
+  const fetchUsers = async () => {
+    try {
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching users:', error);
+        toast.error("خطأ في جلب بيانات المستخدمين");
+        return;
+      }
+
+      setUsers(profiles || []);
+    } catch (error) {
+      console.error('Error in fetchUsers:', error);
+      toast.error("خطأ في جلب بيانات المستخدمين");
+    }
+  };
 
   // تسجيل الدخول
-  const login = (credentials: UserCredentials): boolean => {
-    const { username, password } = credentials;
-    const foundUser = users.find(u => u.username === username && u.password === password);
-    
-    if (foundUser) {
-      // Create a user object without the password
-      const { password, ...userWithoutPassword } = foundUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem("currentUser", JSON.stringify(userWithoutPassword));
-      toast.success("تم تسجيل الدخول بنجاح");
-      navigate('/');
-      return true;
+  const login = async (credentials: UserCredentials): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+      });
+
+      if (error) {
+        console.error('Login error:', error);
+        toast.error("خطأ في تسجيل الدخول: " + error.message);
+        return false;
+      }
+
+      if (data.user) {
+        const profile = await fetchUserProfile(data.user.id);
+        if (profile) {
+          setUser({
+            id: profile.id,
+            username: profile.username,
+            isAdmin: profile.is_admin,
+            email: data.user.email
+          });
+          toast.success("تم تسجيل الدخول بنجاح");
+          navigate('/');
+          return true;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error("خطأ في تسجيل الدخول");
+      return false;
     }
-    
-    toast.error("اسم المستخدم أو كلمة المرور غير صحيحة");
-    return false;
+  };
+
+  // تسجيل مستخدم جديد
+  const signUp = async (credentials: UserCredentials): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: credentials.email,
+        password: credentials.password,
+        options: {
+          data: {
+            username: credentials.username || credentials.email.split('@')[0]
+          },
+          emailRedirectTo: `${window.location.origin}/`
+        }
+      });
+
+      if (error) {
+        console.error('Signup error:', error);
+        toast.error("خطأ في إنشاء الحساب: " + error.message);
+        return false;
+      }
+
+      if (data.user) {
+        toast.success("تم إنشاء الحساب بنجاح. يرجى تفقد بريدك الإلكتروني لتأكيد الحساب.");
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Signup error:', error);
+      toast.error("خطأ في إنشاء الحساب");
+      return false;
+    }
   };
 
   // تسجيل الخروج
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("currentUser");
-    toast.success("تم تسجيل الخروج بنجاح");
-    navigate('/login');
-  };
+  const logout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Logout error:', error);
+        toast.error("خطأ في تسجيل الخروج");
+        return;
+      }
 
-  // إضافة مستخدم جديد
-  const addUser = (newUser: UserCredentials & { isAdmin?: boolean }) => {
-    const userExists = users.some(u => u.username === newUser.username);
-    
-    if (userExists) {
-      toast.error("اسم المستخدم موجود بالفعل");
-      return;
+      setUser(null);
+      toast.success("تم تسجيل الخروج بنجاح");
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error("خطأ في تسجيل الخروج");
     }
-    
-    const userToAdd = {
-      id: Date.now().toString(),
-      username: newUser.username,
-      password: newUser.password,
-      isAdmin: newUser.isAdmin || false
-    };
-    
-    setUsers([...users, userToAdd]);
-    toast.success("تم إضافة المستخدم بنجاح");
   };
 
   // حذف مستخدم
-  const deleteUser = (id: string) => {
-    if (user?.id === id) {
-      toast.error("لا يمكن حذف المستخدم الحالي");
-      return;
+  const deleteUser = async (id: string) => {
+    try {
+      if (user?.id === id) {
+        toast.error("لا يمكن حذف المستخدم الحالي");
+        return;
+      }
+
+      // حذف من جدول profiles سيؤدي إلى حذف المستخدم من auth.users تلقائياً
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Delete user error:', error);
+        toast.error("خطأ في حذف المستخدم: " + error.message);
+        return;
+      }
+
+      // تحديث قائمة المستخدمين
+      await fetchUsers();
+      toast.success("تم حذف المستخدم بنجاح");
+    } catch (error) {
+      console.error('Delete user error:', error);
+      toast.error("خطأ في حذف المستخدم");
     }
-    
-    setUsers(users.filter(u => u.id !== id));
-    toast.success("تم حذف المستخدم بنجاح");
   };
 
+  // مراقبة حالة المصادقة
+  useEffect(() => {
+    let mounted = true;
+
+    // إعداد مستمع تغيير حالة المصادقة
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session: Session | null) => {
+        console.log('Auth state changed:', event, session?.user?.id);
+        
+        if (!mounted) return;
+
+        if (session?.user) {
+          const profile = await fetchUserProfile(session.user.id);
+          if (profile && mounted) {
+            setUser({
+              id: profile.id,
+              username: profile.username,
+              isAdmin: profile.is_admin,
+              email: session.user.email
+            });
+          }
+        } else {
+          if (mounted) {
+            setUser(null);
+          }
+        }
+        
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    );
+
+    // التحقق من الجلسة الحالية
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      
+      if (session?.user) {
+        fetchUserProfile(session.user.id).then(profile => {
+          if (profile && mounted) {
+            setUser({
+              id: profile.id,
+              username: profile.username,
+              isAdmin: profile.is_admin,
+              email: session.user.email
+            });
+          }
+          if (mounted) {
+            setLoading(false);
+          }
+        });
+      } else {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // جلب المستخدمين عند تسجيل الدخول كمدير
+  useEffect(() => {
+    if (user?.isAdmin) {
+      fetchUsers();
+    }
+  }, [user?.isAdmin]);
+
   return (
-    <AuthContext.Provider value={{ user, users, login, logout, addUser, deleteUser }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      users, 
+      login, 
+      logout, 
+      signUp, 
+      deleteUser, 
+      fetchUsers, 
+      loading 
+    }}>
       {children}
     </AuthContext.Provider>
   );
