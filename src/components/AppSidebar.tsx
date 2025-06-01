@@ -59,25 +59,29 @@ export function AppSidebar() {
   
   return (
     <Sidebar side="right" variant="sidebar" collapsible="icon" className="border-0">
-      <SidebarContent className="bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+      <SidebarContent className="bg-gradient-to-b from-slate-700 via-slate-600 to-slate-700">
         {/* Logo Section */}
-        <div className="flex flex-col items-center py-8 border-b border-slate-700/50">
+        <div className="flex flex-col items-center py-8 border-b border-slate-500/50">
           <div className="relative">
-            <div className="w-16 h-16 flex items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 text-white text-2xl font-bold mb-3 shadow-2xl">
-              <Sparkles className="w-8 h-8" />
-            </div>
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-emerald-400 to-green-500 rounded-full border-2 border-slate-900"></div>
+            <Link to="/" className="block">
+              <div className="w-16 h-16 flex items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 text-white text-2xl font-bold mb-3 shadow-2xl hover:scale-105 transition-transform cursor-pointer">
+                <Sparkles className="w-8 h-8" />
+              </div>
+            </Link>
+            <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-emerald-400 to-green-500 rounded-full border-2 border-slate-700"></div>
           </div>
-          <h3 className="text-sm font-bold text-white text-center leading-tight">
-            نظام إدارة
-            <br />
-            الأنشطة الشبابية
-          </h3>
+          <Link to="/" className="block">
+            <h3 className="text-sm font-bold text-white text-center leading-tight hover:text-blue-200 transition-colors cursor-pointer">
+              برنامج تتبع
+              <br />
+              أنشطة المراكز الشبابية
+            </h3>
+          </Link>
           <div className="w-12 h-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mt-2"></div>
         </div>
         
         <SidebarGroup className="px-4 py-6">
-          <SidebarGroupLabel className="text-slate-400 font-semibold text-xs uppercase tracking-wider mb-4 px-3">
+          <SidebarGroupLabel className="text-slate-300 font-semibold text-xs uppercase tracking-wider mb-4 px-3">
             القائمة الرئيسية
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -96,7 +100,7 @@ export function AppSidebar() {
                       relative group rounded-xl transition-all duration-300 hover:scale-105
                       ${isActive 
                         ? `bg-gradient-to-r ${item.gradient} text-white shadow-lg shadow-blue-500/25` 
-                        : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                        : 'text-slate-200 hover:text-white hover:bg-slate-600/50'
                       }
                     `}
                   >
@@ -109,7 +113,7 @@ export function AppSidebar() {
                       )}
                       <div className={`
                         w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300
-                        ${isActive ? 'bg-white/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}
+                        ${isActive ? 'bg-white/20' : 'bg-slate-600/50 group-hover:bg-slate-500/50'}
                       `}>
                         <item.icon className="w-4 h-4" />
                       </div>
@@ -126,13 +130,13 @@ export function AppSidebar() {
         </SidebarGroup>
         
         {/* Footer */}
-        <div className="mt-auto px-6 py-6 text-center border-t border-slate-700/50">
-          <div className="text-xs text-slate-400 space-y-1">
+        <div className="mt-auto px-6 py-6 text-center border-t border-slate-500/50">
+          <div className="text-xs text-slate-300 space-y-1">
             <div className="flex items-center justify-center gap-2">
               <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></div>
               <span>إصدار 1.0</span>
             </div>
-            <p className="text-slate-500">© 2025 المراكز الشبابية</p>
+            <p className="text-slate-400">© 2025 المراكز الشبابية</p>
           </div>
         </div>
       </SidebarContent>
