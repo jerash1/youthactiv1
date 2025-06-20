@@ -146,7 +146,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Create user error:', error);
-        toast.error("خطأ في إنشاء المستخدم: " + error.message);
+        
+        // عرض رسائل خطأ أكثر وضوحاً
+        if (error.message.includes('already exists')) {
+          if (error.message.includes('email')) {
+            toast.error("البريد الإلكتروني مستخدم بالفعل");
+          } else if (error.message.includes('Username')) {
+            toast.error("اسم المستخدم مستخدم بالفعل");
+          } else {
+            toast.error("البيانات مستخدمة بالفعل");
+          }
+        } else if (error.message.includes('duplicate data')) {
+          toast.error("البيانات مكررة - يرجى المحاولة ببيانات مختلفة");
+        } else {
+          toast.error("خطأ في إنشاء المستخدم: " + error.message);
+        }
         return false;
       }
 
