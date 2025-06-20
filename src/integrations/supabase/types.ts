@@ -88,6 +88,7 @@ export type Database = {
           created_at: string
           id: string
           is_admin: boolean
+          password_hash: string | null
           updated_at: string
           username: string
         }
@@ -95,6 +96,7 @@ export type Database = {
           created_at?: string
           id: string
           is_admin?: boolean
+          password_hash?: string | null
           updated_at?: string
           username: string
         }
@@ -102,6 +104,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_admin?: boolean
+          password_hash?: string | null
           updated_at?: string
           username?: string
         }
@@ -112,7 +115,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_user_with_password: {
+        Args: {
+          input_username: string
+          input_email: string
+          input_password: string
+          input_is_admin?: boolean
+        }
+        Returns: string
+      }
+      encrypt_password: {
+        Args: { password: string }
+        Returns: string
+      }
+      verify_user_password: {
+        Args: { input_username: string; input_password: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

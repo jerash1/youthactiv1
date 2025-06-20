@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "../context/AuthContext";
 import { Navigate } from "react-router-dom";
-import { Trash, UserPlus, Shield, User } from "lucide-react";
+import { Trash, UserPlus, Shield, User, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
 const UserManagement = () => {
@@ -39,6 +39,7 @@ const UserManagement = () => {
   const [newPassword, setNewPassword] = useState("");
   const [newUsername, setNewUsername] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
 
@@ -79,7 +80,7 @@ const UserManagement = () => {
     setCreateLoading(true);
     
     try {
-      const success = await createUser(newEmail, newPassword, newUsername, isAdmin);
+      const success = await createUser(newUsername, newEmail, newPassword, isAdmin);
       
       if (success) {
         // إعادة تعيين النموذج
@@ -87,6 +88,7 @@ const UserManagement = () => {
         setNewPassword("");
         setNewUsername("");
         setIsAdmin(false);
+        setShowPassword(false);
         setDialogOpen(false);
       }
     } finally {
@@ -195,15 +197,24 @@ const UserManagement = () => {
                   </div>
                   <div className="space-y-2">
                     <label htmlFor="password" className="text-sm font-medium">كلمة المرور</label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="أدخل كلمة المرور"
-                      className="w-full"
-                      required
-                    />
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="أدخل كلمة المرور"
+                        className="w-full pr-10"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
                   </div>
                   <div className="flex items-center space-x-2 bg-gray-50 p-3 rounded-lg">
                     <Checkbox 
@@ -240,7 +251,6 @@ const UserManagement = () => {
               <TableHeader>
                 <TableRow className="border-b-2 border-gray-200">
                   <TableHead className="font-bold text-gray-700">اسم المستخدم</TableHead>
-                  <TableHead className="font-bold text-gray-700">البريد الإلكتروني</TableHead>
                   <TableHead className="font-bold text-gray-700">نوع الحساب</TableHead>
                   <TableHead className="font-bold text-gray-700">الصلاحيات</TableHead>
                   <TableHead className="font-bold text-gray-700">تاريخ الإنشاء</TableHead>
@@ -251,7 +261,6 @@ const UserManagement = () => {
                 {users.map((profile) => (
                   <TableRow key={profile.id} className="hover:bg-gray-50 transition-colors">
                     <TableCell className="font-medium text-gray-800">{profile.username}</TableCell>
-                    <TableCell className="text-gray-600">{profile.id}</TableCell>
                     <TableCell>
                       <div className="flex items-center">
                         {profile.is_admin ? (

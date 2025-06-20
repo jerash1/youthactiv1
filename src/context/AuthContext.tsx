@@ -3,13 +3,11 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../integrations/supabase/client";
-import { User, Session } from "@supabase/supabase-js";
 
 export type AppUser = {
   id: string;
   username: string;
   isAdmin: boolean;
-  email?: string;
 };
 
 export type Profile = {
@@ -21,7 +19,7 @@ export type Profile = {
 };
 
 type UserCredentials = {
-  email: string;
+  username: string;
   password: string;
 };
 
@@ -30,7 +28,7 @@ interface AuthContextType {
   users: Profile[];
   login: (credentials: UserCredentials) => Promise<boolean>;
   logout: () => void;
-  createUser: (email: string, password: string, username: string, isAdmin: boolean) => Promise<boolean>;
+  createUser: (username: string, email: string, password: string, isAdmin: boolean) => Promise<boolean>;
   deleteUser: (id: string) => Promise<void>;
   fetchUsers: () => Promise<void>;
   loading: boolean;
@@ -94,33 +92,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // تسجيل الدخول
+  // تسجيل الدخول باستخدام اسم المستخدم
   const login = async (credentials: UserCredentials): Promise<boolean> => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: credentials.email,
-        password: credentials.password,
+      // التحقق من اسم المستخدم وكلمة المرور باستخدام دالة قاعدة البيانات
+      const { data, error } = await supabase.rpc('verify_user_password', {
+        input_username: credentials.username,
+        input_password: credentials.password
       });
 
       if (error) {
         console.error('Login error:', error);
-        toast.error("خطأ في تسجيل الدخول: " + error.message);
+        toast.error("خطأ في تسجيل الدخول");
         return false;
       }
 
-      if (data.user) {
-        const profile = await fetchUserProfile(data.user.id);
-        if (profile) {
-          setUser({
-            id: profile.id,
-            username: profile.username,
-            isAdmin: profile.is_admin,
-            email: data.user.email
-          });
-          toast.success("تم تسجيل الدخول بنجاح");
-          navigate('/');
-          return true;
-        }
+      if (!data) {
+        toast.error("اسم المستخدم أو كلمة المرور غير صحيحة");
+        return false;
+      }
+
+      // جلب بيانات المستخدم
+      const profile = await fetchUserProfile(data);
+      if (profile) {
+        setUser({
+          id: profile.id,
+          username: profile.username,
+          isAdmin: profile.is_admin
+        });
+        toast.success("تم تسجيل الدخول بنجاح");
+        navigate('/');
+        return true;
       }
 
       return false;
@@ -132,16 +134,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // إنشاء مستخدم جديد (للمدراء فقط)
-  const createUser = async (email: string, password: string, username: string, isAdmin: boolean): Promise<boolean> => {
+  const createUser = async (username: string, email: string, password: string, isAdmin: boolean): Promise<boolean> => {
     try {
-      // إنشاء المستخدم في Supabase Auth
-      const { data, error } = await supabase.auth.admin.createUser({
-        email: email,
-        password: password,
-        user_metadata: {
-          username: username
-        },
-        email_confirm: true // تأكيد البريد الإلكتروني تلقائياً
+      // استخدام دالة قاعدة البيانات لإنشاء المستخدم
+      const { data, error } = await supabase.rpc('create_user_with_password', {
+        input_username: username,
+        input_email: email,
+        input_password: password,
+        input_is_admin: isAdmin
       });
 
       if (error) {
@@ -150,20 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
 
-      if (data.user) {
-        // تحديث صلاحيات المدير إذا لزم الأمر
-        if (isAdmin) {
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ is_admin: true })
-            .eq('id', data.user.id);
-
-          if (updateError) {
-            console.error('Update admin status error:', updateError);
-            toast.error("تم إنشاء المستخدم ولكن فشل في تحديث صلاحيات المدير");
-          }
-        }
-
+      if (data) {
         // تحديث قائمة المستخدمين
         await fetchUsers();
         toast.success("تم إنشاء المستخدم بنجاح");
@@ -181,13 +168,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // تسجيل الخروج
   const logout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Logout error:', error);
-        toast.error("خطأ في تسجيل الخروج");
-        return;
-      }
-
       setUser(null);
       toast.success("تم تسجيل الخروج بنجاح");
       navigate('/login');
@@ -205,8 +185,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      // حذف من جدول profiles سيؤدي إلى حذف المستخدم من auth.users تلقائياً
-      const { error } = await supabase.auth.admin.deleteUser(id);
+      // حذف من جدول profiles
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', id);
 
       if (error) {
         console.error('Delete user error:', error);
@@ -223,68 +206,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // مراقبة حالة المصادقة
+  // التحقق من وجود جلسة نشطة عند تحميل التطبيق
   useEffect(() => {
-    let mounted = true;
-
-    // إعداد مستمع تغيير حالة المصادقة
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session: Session | null) => {
-        console.log('Auth state changed:', event, session?.user?.id);
-        
-        if (!mounted) return;
-
-        if (session?.user) {
-          const profile = await fetchUserProfile(session.user.id);
-          if (profile && mounted) {
-            setUser({
-              id: profile.id,
-              username: profile.username,
-              isAdmin: profile.is_admin,
-              email: session.user.email
-            });
-          }
-        } else {
-          if (mounted) {
-            setUser(null);
-          }
-        }
-        
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    );
-
-    // التحقق من الجلسة الحالية
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      
-      if (session?.user) {
-        fetchUserProfile(session.user.id).then(profile => {
-          if (profile && mounted) {
-            setUser({
-              id: profile.id,
-              username: profile.username,
-              isAdmin: profile.is_admin,
-              email: session.user.email
-            });
-          }
-          if (mounted) {
-            setLoading(false);
-          }
-        });
-      } else {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+    setLoading(false);
   }, []);
 
   // جلب المستخدمين عند تسجيل الدخول كمدير
