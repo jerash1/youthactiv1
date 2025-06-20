@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -29,6 +28,7 @@ interface AuthContextType {
   login: (credentials: UserCredentials) => Promise<boolean>;
   logout: () => void;
   createUser: (username: string, email: string, password: string, isAdmin: boolean) => Promise<boolean>;
+  updateUser: (id: string, userData: { username: string; password?: string; isAdmin: boolean }) => Promise<boolean>;
   deleteUser: (id: string) => Promise<void>;
   fetchUsers: () => Promise<void>;
   loading: boolean;
@@ -179,6 +179,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // تحديث بيانات مستخدم
+  const updateUser = async (id: string, userData: { username: string; password?: string; isAdmin: boolean }): Promise<boolean> => {
+    try {
+      // تحديث اسم المستخدم والصلاحيات في جدول profiles
+      const updateData: any = {
+        username: userData.username,
+        is_admin: userData.isAdmin,
+        updated_at: new Date().toISOString()
+      };
+
+      // إذا تم توفير كلمة مرور جديدة، قم بتشفيرها وإضافتها
+      if (userData.password && userData.password.trim()) {
+        const { data: hashedPassword, error: hashError } = await supabase.rpc('encrypt_password', {
+          password: userData.password
+        });
+
+        if (hashError) {
+          console.error('Password encryption error:', hashError);
+          toast.error("خطأ في تشفير كلمة المرور");
+          return false;
+        }
+
+        updateData.password_hash = hashedPassword;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', id);
+
+      if (error) {
+        console.error('Update user error:', error);
+        
+        if (error.message.includes('already exists') || error.message.includes('duplicate')) {
+          toast.error("اسم المستخدم مستخدم بالفعل");
+        } else {
+          toast.error("خطأ في تحديث بيانات المستخدم: " + error.message);
+        }
+        return false;
+      }
+
+      // تحديث قائمة المستخدمين
+      await fetchUsers();
+      return true;
+    } catch (error) {
+      console.error('Update user error:', error);
+      toast.error("خطأ في تحديث بيانات المستخدم");
+      return false;
+    }
+  };
+
   // تسجيل الخروج
   const logout = async () => {
     try {
@@ -239,6 +290,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login, 
       logout, 
       createUser,
+      updateUser,
       deleteUser, 
       fetchUsers, 
       loading 

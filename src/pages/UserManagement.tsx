@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { 
   Card, 
@@ -30,11 +29,12 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "../context/AuthContext";
 import { Navigate } from "react-router-dom";
-import { Trash, UserPlus, Shield, User, Eye, EyeOff } from "lucide-react";
+import { Trash, UserPlus, Shield, User, Eye, EyeOff, Edit } from "lucide-react";
 import { toast } from "sonner";
+import EditUserDialog from "../components/EditUserDialog";
 
 const UserManagement = () => {
-  const { user, users, deleteUser, fetchUsers, createUser, loading } = useAuth();
+  const { user, users, deleteUser, fetchUsers, createUser, updateUser, loading } = useAuth();
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newUsername, setNewUsername] = useState("");
@@ -42,6 +42,9 @@ const UserManagement = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editLoading, setEditLoading] = useState(false);
 
   // جلب المستخدمين عند تحميل الصفحة
   useEffect(() => {
@@ -102,50 +105,72 @@ const UserManagement = () => {
     }
   };
 
+  const handleEditUser = (userToEdit) => {
+    setEditingUser(userToEdit);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async (userData) => {
+    setEditLoading(true);
+    try {
+      if (updateUser) {
+        const success = await updateUser(editingUser.id, userData);
+        if (success) {
+          toast.success("تم تحديث بيانات المستخدم بنجاح");
+          await fetchUsers();
+        }
+      } else {
+        toast.error("وظيفة التحديث غير متوفرة حالياً");
+      }
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   const adminUsers = users.filter(u => u.is_admin);
   const regularUsers = users.filter(u => !u.is_admin);
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto py-4 px-4 space-y-6">
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <CardContent className="p-6">
+          <CardContent className="p-4 lg:p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-blue-600">إجمالي المستخدمين</p>
-                <p className="text-3xl font-bold text-blue-800">{users.length}</p>
+                <p className="text-2xl lg:text-3xl font-bold text-blue-800">{users.length}</p>
               </div>
-              <div className="w-12 h-12 bg-blue-200 rounded-full flex items-center justify-center">
-                <User className="w-6 h-6 text-blue-600" />
+              <div className="w-10 h-10 lg:w-12 lg:h-12 bg-blue-200 rounded-full flex items-center justify-center">
+                <User className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <CardContent className="p-6">
+          <CardContent className="p-4 lg:p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-purple-600">المدراء</p>
-                <p className="text-3xl font-bold text-purple-800">{adminUsers.length}</p>
+                <p className="text-2xl lg:text-3xl font-bold text-purple-800">{adminUsers.length}</p>
               </div>
-              <div className="w-12 h-12 bg-purple-200 rounded-full flex items-center justify-center">
-                <Shield className="w-6 h-6 text-purple-600" />
+              <div className="w-10 h-10 lg:w-12 lg:h-12 bg-purple-200 rounded-full flex items-center justify-center">
+                <Shield className="w-5 h-5 lg:w-6 lg:h-6 text-purple-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <CardContent className="p-6">
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 sm:col-span-2 lg:col-span-1">
+          <CardContent className="p-4 lg:p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-green-600">المستخدمين العاديين</p>
-                <p className="text-3xl font-bold text-green-800">{regularUsers.length}</p>
+                <p className="text-2xl lg:text-3xl font-bold text-green-800">{regularUsers.length}</p>
               </div>
-              <div className="w-12 h-12 bg-green-200 rounded-full flex items-center justify-center">
-                <User className="w-6 h-6 text-green-600" />
+              <div className="w-10 h-10 lg:w-12 lg:h-12 bg-green-200 rounded-full flex items-center justify-center">
+                <User className="w-5 h-5 lg:w-6 lg:h-6 text-green-600" />
               </div>
             </div>
           </CardContent>
@@ -155,16 +180,16 @@ const UserManagement = () => {
       {/* User Management Card */}
       <Card className="shadow-xl border-0">
         <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
-          <CardTitle className="text-2xl flex items-center justify-between">
+          <CardTitle className="text-xl lg:text-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <span>إدارة المستخدمين والمدراء</span>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-white text-blue-600 hover:bg-gray-100 shadow-lg">
+                <Button className="bg-white text-blue-600 hover:bg-gray-100 shadow-lg w-full sm:w-auto">
                   <UserPlus size={16} className="ml-2" />
                   <span>إضافة مستخدم جديد</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent className="sm:max-w-md mx-4">
                 <DialogHeader>
                   <DialogTitle className="text-xl">إضافة مستخدم جديد</DialogTitle>
                   <DialogDescription>
@@ -245,16 +270,16 @@ const UserManagement = () => {
             إدارة حسابات المستخدمين وصلاحياتهم في النظام
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className="p-4 lg:p-6">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="border-b-2 border-gray-200">
-                  <TableHead className="font-bold text-gray-700">اسم المستخدم</TableHead>
-                  <TableHead className="font-bold text-gray-700">نوع الحساب</TableHead>
-                  <TableHead className="font-bold text-gray-700">الصلاحيات</TableHead>
-                  <TableHead className="font-bold text-gray-700">تاريخ الإنشاء</TableHead>
-                  <TableHead className="font-bold text-gray-700">الإجراءات</TableHead>
+                  <TableHead className="font-bold text-gray-700 min-w-[120px]">اسم المستخدم</TableHead>
+                  <TableHead className="font-bold text-gray-700 min-w-[100px]">نوع الحساب</TableHead>
+                  <TableHead className="font-bold text-gray-700 min-w-[150px] hidden sm:table-cell">الصلاحيات</TableHead>
+                  <TableHead className="font-bold text-gray-700 min-w-[120px] hidden md:table-cell">تاريخ الإنشاء</TableHead>
+                  <TableHead className="font-bold text-gray-700 min-w-[120px]">الإجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -280,23 +305,34 @@ const UserManagement = () => {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-gray-600">
+                    <TableCell className="text-gray-600 hidden sm:table-cell">
                       {profile.is_admin ? "إدارة كاملة للنظام" : "عرض وإدارة الأنشطة"}
                     </TableCell>
-                    <TableCell className="text-gray-600">
+                    <TableCell className="text-gray-600 hidden md:table-cell">
                       {new Date(profile.created_at).toLocaleDateString('ar')}
                     </TableCell>
                     <TableCell>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={() => handleDeleteUser(profile.id)}
-                        disabled={profile.id === user.id}
-                        className="flex items-center gap-1 shadow-md hover:shadow-lg transition-shadow"
-                      >
-                        <Trash size={14} />
-                        <span>حذف</span>
-                      </Button>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleEditUser(profile)}
+                          className="flex items-center gap-1 w-full sm:w-auto"
+                        >
+                          <Edit size={14} />
+                          <span>تعديل</span>
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={() => handleDeleteUser(profile.id)}
+                          disabled={profile.id === user.id}
+                          className="flex items-center gap-1 w-full sm:w-auto"
+                        >
+                          <Trash size={14} />
+                          <span>حذف</span>
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -311,6 +347,15 @@ const UserManagement = () => {
           </div>
         </CardFooter>
       </Card>
+
+      {/* Edit User Dialog */}
+      <EditUserDialog
+        user={editingUser}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSave={handleSaveEdit}
+        loading={editLoading}
+      />
     </div>
   );
 };

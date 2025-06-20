@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { 
   Card, 
@@ -30,11 +29,12 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "../context/AuthContext";
 import { Navigate } from "react-router-dom";
-import { Trash, UserPlus, Shield, User, Eye, EyeOff } from "lucide-react";
+import { Trash, UserPlus, Shield, User, Eye, EyeOff, Edit } from "lucide-react";
 import { toast } from "sonner";
+import EditUserDialog from "../components/EditUserDialog";
 
 const Users = () => {
-  const { user, users, deleteUser, fetchUsers, createUser, loading } = useAuth();
+  const { user, users, deleteUser, fetchUsers, createUser, updateUser, loading } = useAuth();
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newUsername, setNewUsername] = useState("");
@@ -42,6 +42,9 @@ const Users = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editLoading, setEditLoading] = useState(false);
 
   // جلب المستخدمين عند تحميل الصفحة
   useEffect(() => {
@@ -102,11 +105,33 @@ const Users = () => {
     }
   };
 
+  const handleEditUser = (userToEdit) => {
+    setEditingUser(userToEdit);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async (userData) => {
+    setEditLoading(true);
+    try {
+      if (updateUser) {
+        const success = await updateUser(editingUser.id, userData);
+        if (success) {
+          toast.success("تم تحديث بيانات المستخدم بنجاح");
+          await fetchUsers();
+        }
+      } else {
+        toast.error("وظيفة التحديث غير متوفرة حالياً");
+      }
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto py-4 px-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl flex items-center justify-between">
+          <CardTitle className="text-xl lg:text-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <span>إدارة المستخدمين</span>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
@@ -193,61 +218,83 @@ const Users = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>اسم المستخدم</TableHead>
-                <TableHead>البريد الإلكتروني</TableHead>
-                <TableHead>الصلاحيات</TableHead>
-                <TableHead>تاريخ الإنشاء</TableHead>
-                <TableHead>الإجراءات</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((profile) => (
-                <TableRow key={profile.id}>
-                  <TableCell className="font-medium flex items-center gap-2">
-                    {profile.is_admin ? (
-                      <Shield size={16} className="text-purple-600" />
-                    ) : (
-                      <User size={16} className="text-green-600" />
-                    )}
-                    {profile.username}
-                  </TableCell>
-                  <TableCell>{profile.id}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-sm font-medium ${
-                      profile.is_admin 
-                        ? "bg-purple-100 text-purple-800" 
-                        : "bg-green-100 text-green-800"
-                    }`}>
-                      {profile.is_admin ? "مدير" : "مستخدم عادي"}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(profile.created_at).toLocaleDateString('ar')}
-                  </TableCell>
-                  <TableCell>
-                    <Button 
-                      variant="destructive" 
-                      size="sm" 
-                      onClick={() => handleDeleteUser(profile.id)}
-                      disabled={profile.id === user.id}
-                      className="flex items-center gap-1"
-                    >
-                      <Trash size={14} />
-                      <span>حذف</span>
-                    </Button>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[120px]">اسم المستخدم</TableHead>
+                  <TableHead className="hidden sm:table-cell">البريد الإلكتروني</TableHead>
+                  <TableHead>الصلاحيات</TableHead>
+                  <TableHead className="hidden md:table-cell">تاريخ الإنشاء</TableHead>
+                  <TableHead>الإجراءات</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {users.map((profile) => (
+                  <TableRow key={profile.id}>
+                    <TableCell className="font-medium flex items-center gap-2">
+                      {profile.is_admin ? (
+                        <Shield size={16} className="text-purple-600" />
+                      ) : (
+                        <User size={16} className="text-green-600" />
+                      )}
+                      {profile.username}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">{profile.id}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                        profile.is_admin 
+                          ? "bg-purple-100 text-purple-800" 
+                          : "bg-green-100 text-green-800"
+                      }`}>
+                        {profile.is_admin ? "مدير" : "مستخدم عادي"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {new Date(profile.created_at).toLocaleDateString('ar')}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleEditUser(profile)}
+                          className="flex items-center gap-1 w-full sm:w-auto"
+                        >
+                          <Edit size={14} />
+                          <span>تعديل</span>
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={() => handleDeleteUser(profile.id)}
+                          disabled={profile.id === user.id}
+                          className="flex items-center gap-1 w-full sm:w-auto"
+                        >
+                          <Trash size={14} />
+                          <span>حذف</span>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
         <CardFooter className="border-t p-4 text-sm text-gray-500">
           لا يمكن حذف المستخدم الحالي الذي تم تسجيل الدخول به.
         </CardFooter>
       </Card>
+
+      {/* Edit User Dialog */}
+      <EditUserDialog
+        user={editingUser}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSave={handleSaveEdit}
+        loading={editLoading}
+      />
     </div>
   );
 };
