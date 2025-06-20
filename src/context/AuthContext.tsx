@@ -23,7 +23,6 @@ export type Profile = {
 type UserCredentials = {
   email: string;
   password: string;
-  username?: string;
 };
 
 interface AuthContextType {
@@ -31,7 +30,7 @@ interface AuthContextType {
   users: Profile[];
   login: (credentials: UserCredentials) => Promise<boolean>;
   logout: () => void;
-  signUp: (credentials: UserCredentials) => Promise<boolean>;
+  createUser: (email: string, password: string, username: string, isAdmin: boolean) => Promise<boolean>;
   deleteUser: (id: string) => Promise<void>;
   fetchUsers: () => Promise<void>;
   loading: boolean;
@@ -132,35 +131,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // تسجيل مستخدم جديد
-  const signUp = async (credentials: UserCredentials): Promise<boolean> => {
+  // إنشاء مستخدم جديد (للمدراء فقط)
+  const createUser = async (email: string, password: string, username: string, isAdmin: boolean): Promise<boolean> => {
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: credentials.email,
-        password: credentials.password,
-        options: {
-          data: {
-            username: credentials.username || credentials.email.split('@')[0]
-          },
-          emailRedirectTo: `${window.location.origin}/`
-        }
+      // إنشاء المستخدم في Supabase Auth
+      const { data, error } = await supabase.auth.admin.createUser({
+        email: email,
+        password: password,
+        user_metadata: {
+          username: username
+        },
+        email_confirm: true // تأكيد البريد الإلكتروني تلقائياً
       });
 
       if (error) {
-        console.error('Signup error:', error);
-        toast.error("خطأ في إنشاء الحساب: " + error.message);
+        console.error('Create user error:', error);
+        toast.error("خطأ في إنشاء المستخدم: " + error.message);
         return false;
       }
 
       if (data.user) {
-        toast.success("تم إنشاء الحساب بنجاح. يرجى تفقد بريدك الإلكتروني لتأكيد الحساب.");
+        // تحديث صلاحيات المدير إذا لزم الأمر
+        if (isAdmin) {
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ is_admin: true })
+            .eq('id', data.user.id);
+
+          if (updateError) {
+            console.error('Update admin status error:', updateError);
+            toast.error("تم إنشاء المستخدم ولكن فشل في تحديث صلاحيات المدير");
+          }
+        }
+
+        // تحديث قائمة المستخدمين
+        await fetchUsers();
+        toast.success("تم إنشاء المستخدم بنجاح");
         return true;
       }
 
       return false;
     } catch (error) {
-      console.error('Signup error:', error);
-      toast.error("خطأ في إنشاء الحساب");
+      console.error('Create user error:', error);
+      toast.error("خطأ في إنشاء المستخدم");
       return false;
     }
   };
@@ -193,10 +206,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // حذف من جدول profiles سيؤدي إلى حذف المستخدم من auth.users تلقائياً
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.auth.admin.deleteUser(id);
 
       if (error) {
         console.error('Delete user error:', error);
@@ -290,7 +300,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       users, 
       login, 
       logout, 
-      signUp, 
+      createUser,
       deleteUser, 
       fetchUsers, 
       loading 

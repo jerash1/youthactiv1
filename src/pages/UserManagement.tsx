@@ -32,10 +32,9 @@ import { useAuth } from "../context/AuthContext";
 import { Navigate } from "react-router-dom";
 import { Trash, UserPlus, Shield, User } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "../integrations/supabase/client";
 
 const UserManagement = () => {
-  const { user, users, deleteUser, fetchUsers, loading } = useAuth();
+  const { user, users, deleteUser, fetchUsers, createUser, loading } = useAuth();
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newUsername, setNewUsername] = useState("");
@@ -72,55 +71,24 @@ const UserManagement = () => {
   }
 
   const handleAddUser = async () => {
-    if (!newEmail || !newPassword) {
-      toast.error("يرجى إدخال البريد الإلكتروني وكلمة المرور");
+    if (!newEmail || !newPassword || !newUsername) {
+      toast.error("يرجى إدخال جميع البيانات المطلوبة");
       return;
     }
     
     setCreateLoading(true);
     
     try {
-      // إنشاء المستخدم في Supabase Auth
-      const { data, error } = await supabase.auth.admin.createUser({
-        email: newEmail,
-        password: newPassword,
-        user_metadata: {
-          username: newUsername || newEmail.split('@')[0]
-        },
-        email_confirm: true
-      });
-
-      if (error) {
-        console.error('Create user error:', error);
-        toast.error("خطأ في إنشاء المستخدم: " + error.message);
-        return;
-      }
-
-      if (data.user) {
-        // تحديث صلاحيات المدير إذا لزم الأمر
-        if (isAdmin) {
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ is_admin: true })
-            .eq('id', data.user.id);
-
-          if (updateError) {
-            console.error('Update admin status error:', updateError);
-            toast.error("تم إنشاء المستخدم ولكن فشل في تحديث صلاحيات المدير");
-          }
-        }
-
-        await fetchUsers();
+      const success = await createUser(newEmail, newPassword, newUsername, isAdmin);
+      
+      if (success) {
+        // إعادة تعيين النموذج
         setNewEmail("");
         setNewPassword("");
         setNewUsername("");
         setIsAdmin(false);
         setDialogOpen(false);
-        toast.success("تم إنشاء المستخدم بنجاح");
       }
-    } catch (error) {
-      console.error('Create user error:', error);
-      toast.error("خطأ في إنشاء المستخدم");
     } finally {
       setCreateLoading(false);
     }
@@ -208,8 +176,9 @@ const UserManagement = () => {
                       id="username"
                       value={newUsername}
                       onChange={(e) => setNewUsername(e.target.value)}
-                      placeholder="أدخل اسم المستخدم (اختياري)"
+                      placeholder="أدخل اسم المستخدم"
                       className="w-full"
+                      required
                     />
                   </div>
                   <div className="space-y-2">
@@ -221,6 +190,7 @@ const UserManagement = () => {
                       onChange={(e) => setNewEmail(e.target.value)}
                       placeholder="أدخل البريد الإلكتروني"
                       className="w-full"
+                      required
                     />
                   </div>
                   <div className="space-y-2">
@@ -232,6 +202,7 @@ const UserManagement = () => {
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="أدخل كلمة المرور"
                       className="w-full"
+                      required
                     />
                   </div>
                   <div className="flex items-center space-x-2 bg-gray-50 p-3 rounded-lg">
@@ -269,6 +240,7 @@ const UserManagement = () => {
               <TableHeader>
                 <TableRow className="border-b-2 border-gray-200">
                   <TableHead className="font-bold text-gray-700">اسم المستخدم</TableHead>
+                  <TableHead className="font-bold text-gray-700">البريد الإلكتروني</TableHead>
                   <TableHead className="font-bold text-gray-700">نوع الحساب</TableHead>
                   <TableHead className="font-bold text-gray-700">الصلاحيات</TableHead>
                   <TableHead className="font-bold text-gray-700">تاريخ الإنشاء</TableHead>
@@ -279,6 +251,7 @@ const UserManagement = () => {
                 {users.map((profile) => (
                   <TableRow key={profile.id} className="hover:bg-gray-50 transition-colors">
                     <TableCell className="font-medium text-gray-800">{profile.username}</TableCell>
+                    <TableCell className="text-gray-600">{profile.id}</TableCell>
                     <TableCell>
                       <div className="flex items-center">
                         {profile.is_admin ? (
