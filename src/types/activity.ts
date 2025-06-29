@@ -1,5 +1,5 @@
 
-export type ActivityStatus = "preparing" | "completed" | "cancelled";
+export type ActivityStatus = "preparing" | "in_progress" | "completed" | "cancelled";
 
 export interface Activity {
   id: string;

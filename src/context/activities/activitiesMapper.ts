@@ -33,7 +33,7 @@ export const mapActivityToSupabase = (activity: Omit<Activity, "id">, centerId: 
 
 // التأكد من أن قيمة status مناسبة
 export const validateStatus = (status: string): ActivityStatus => {
-  const validStatuses: ActivityStatus[] = ["preparing", "completed", "cancelled"];
+  const validStatuses: ActivityStatus[] = ["preparing", "in_progress", "completed", "cancelled"];
   return validStatuses.includes(status as ActivityStatus) 
     ? (status as ActivityStatus) 
     : "preparing"; // القيمة الافتراضية إذا كانت القيمة غير صالحة

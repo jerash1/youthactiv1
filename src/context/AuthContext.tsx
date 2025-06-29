@@ -12,6 +12,8 @@ export type AppUser = {
 export type Profile = {
   id: string;
   username: string;
+  email: string | null;
+  phone: string | null;
   is_admin: boolean;
   created_at: string;
   updated_at: string;
@@ -28,6 +30,7 @@ interface AuthContextType {
   login: (credentials: UserCredentials) => Promise<boolean>;
   logout: () => void;
   createUser: (username: string, email: string, password: string, isAdmin: boolean) => Promise<boolean>;
+  createUserWithoutAuth: (username: string, email?: string, phone?: string, isAdmin?: boolean) => Promise<boolean>;
   updateUser: (id: string, userData: { username: string; password?: string; isAdmin: boolean }) => Promise<boolean>;
   deleteUser: (id: string) => Promise<void>;
   fetchUsers: () => Promise<void>;
@@ -173,7 +176,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return false;
     } catch (error) {
-      console.error('Create user error:', error);
+      console.error('Create user error:', error);  
+      toast.error("خطأ في إنشاء المستخدم");
+      return false;
+    }
+  };
+
+  // إنشاء مستخدم بدون تسجيل دخول (للمدراء فقط)
+  const createUserWithoutAuth = async (username: string, email?: string, phone?: string, isAdmin: boolean = false): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.rpc('create_user_without_auth', {
+        input_username: username,
+        input_email: email || null,
+        input_phone: phone || null,
+        input_is_admin: isAdmin
+      });
+
+      if (error) {
+        console.error('Create user without auth error:', error);
+        
+        if (error.message.includes('already exists')) {
+          if (error.message.includes('email')) {
+            toast.error("البريد الإلكتروني مستخدم بالفعل");
+          } else if (error.message.includes('Username')) {
+            toast.error("اسم المستخدم مستخدم بالفعل");
+          } else {
+            toast.error("البيانات مستخدمة بالفعل");
+          }
+        } else {
+          toast.error("خطأ في إنشاء المستخدم: " + error.message);
+        }
+        return false;
+      }
+
+      if (data) {
+        await fetchUsers();
+        toast.success("تم إنشاء المستخدم بنجاح");
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Create user without auth error:', error);
       toast.error("خطأ في إنشاء المستخدم");
       return false;
     }
@@ -290,6 +334,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login, 
       logout, 
       createUser,
+      createUserWithoutAuth,
       updateUser,
       deleteUser, 
       fetchUsers, 

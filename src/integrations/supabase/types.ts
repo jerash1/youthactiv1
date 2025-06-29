@@ -124,25 +124,31 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          email: string | null
           id: string
           is_admin: boolean
           password_hash: string | null
+          phone: string | null
           updated_at: string
           username: string
         }
         Insert: {
           created_at?: string
+          email?: string | null
           id: string
           is_admin?: boolean
           password_hash?: string | null
+          phone?: string | null
           updated_at?: string
           username: string
         }
         Update: {
           created_at?: string
+          email?: string | null
           id?: string
           is_admin?: boolean
           password_hash?: string | null
+          phone?: string | null
           updated_at?: string
           username?: string
         }
@@ -158,6 +164,15 @@ export type Database = {
           input_username: string
           input_email: string
           input_password: string
+          input_is_admin?: boolean
+        }
+        Returns: string
+      }
+      create_user_without_auth: {
+        Args: {
+          input_username: string
+          input_email?: string
+          input_phone?: string
           input_is_admin?: boolean
         }
         Returns: string

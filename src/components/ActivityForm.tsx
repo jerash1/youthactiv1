@@ -118,7 +118,7 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ activity, isEditing = false
     );
   }
 
-  const showFileUpload = isEditing && activity && formValues.status === "completed";
+  const showFileUpload = isEditing && activity && (formValues.status === "completed" || formValues.status === "in_progress");
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -177,6 +177,7 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ activity, isEditing = false
             className="w-full p-2 border rounded-md bg-white"
           >
             <option value="preparing">في مرحلة الإعداد</option>
+            <option value="in_progress">النشاط قيد التنفيذ</option>
             <option value="completed">مكتمل</option>
             <option value="cancelled">تم إلغاء النشاط</option>
           </select>
@@ -241,6 +242,14 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ activity, isEditing = false
 
       {showFileUpload && (
         <div className="border-t pt-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-800">
+            الملفات والمستندات
+            {formValues.status === "in_progress" && (
+              <span className="text-sm font-normal text-gray-600 mr-2">
+                (يمكن إضافة الملفات أثناء تنفيذ النشاط)
+              </span>
+            )}
+          </h3>
           {loadingFiles ? (
             <div className="flex justify-center items-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />

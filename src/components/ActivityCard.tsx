@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Activity } from "../types/activity";
 import { Link, useNavigate } from "react-router-dom";
 import { needsAlert } from "../data/mockData";
-import { Edit, Trash2, Check, X, Calendar, MapPin, Users } from "lucide-react";
+import { Edit, Trash2, Check, X, Calendar, MapPin, Users, Play } from "lucide-react";
 import { useActivities } from "../context/ActivitiesContext";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -29,6 +29,8 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
     switch (activity.status) {
       case "preparing":
         return "bg-gradient-to-r from-amber-100 to-orange-100 text-amber-800 border-amber-200";
+      case "in_progress":
+        return "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 border-blue-200";
       case "completed":
         return "bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-800 border-emerald-200";
       case "cancelled":
@@ -42,6 +44,8 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
     switch (activity.status) {
       case "preparing":
         return "في مرحلة الإعداد";
+      case "in_progress":
+        return "قيد التنفيذ";
       case "completed":
         return "مكتمل";
       case "cancelled":
@@ -55,6 +59,14 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
     updateActivity({
       ...activity,
       status: "completed"
+    });
+    navigate("/activities");
+  };
+
+  const handleStartActivity = () => {
+    updateActivity({
+      ...activity,
+      status: "in_progress"
     });
     navigate("/activities");
   };
@@ -169,11 +181,11 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
                   <span>تأجيل</span>
                 </Button>
                 <Button 
-                  className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 rounded-xl"
-                  onClick={handleConfirmActivity}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-xl"
+                  onClick={handleStartActivity}
                 >
-                  <Check size={16} className="ml-2" />
-                  <span>مكتمل</span>
+                  <Play size={16} className="ml-2" />
+                  <span>بدء التنفيذ</span>
                 </Button>
               </div>
             </div>
@@ -199,7 +211,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
                 </button>
               </div>
 
-              {/* Confirm/Postpone buttons for preparing activities */}
+              {/* Confirm/Start/Postpone buttons for different statuses */}
               {activity.status === "preparing" && (
                 <div className="flex gap-2">
                   <Button 
@@ -211,11 +223,31 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
                     <span>تأجيل</span>
                   </Button>
                   <Button 
+                    className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-xl"
+                    onClick={handleStartActivity}
+                  >
+                    <Play size={16} className="ml-2" />
+                    <span>بدء التنفيذ</span>
+                  </Button>
+                </div>
+              )}
+
+              {activity.status === "in_progress" && (
+                <div className="flex gap-2">
+                  <Button 
+                    variant="destructive"
+                    className="flex-1 rounded-xl"
+                    onClick={handlePostponeActivity}
+                  >
+                    <X size={16} className="ml-2" />
+                    <span>إيقاف النشاط</span>
+                  </Button>
+                  <Button 
                     className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 rounded-xl"
                     onClick={handleConfirmActivity}
                   >
                     <Check size={16} className="ml-2" />
-                    <span>تأكيد</span>
+                    <span>إكمال النشاط</span>
                   </Button>
                 </div>
               )}

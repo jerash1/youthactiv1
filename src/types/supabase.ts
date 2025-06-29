@@ -14,7 +14,7 @@ export type SupabaseActivity = {
   location: string;
   start_date: string;
   end_date: string;
-  status: "preparing" | "completed" | "cancelled";
+  status: "preparing" | "in_progress" | "completed" | "cancelled";
   description: string | null;
   expected_participants: number | null;
   created_at: string;
