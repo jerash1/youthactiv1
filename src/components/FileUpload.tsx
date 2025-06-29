@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from "react";
 import { Upload, X, File, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,20 +37,29 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
     try {
       for (const file of Array.from(selectedFiles)) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${file.name}`;
+        // تنظيف اسم الملف من الأحرف الخاصة
+        const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const fileExt = cleanFileName.split('.').pop();
+        const fileName = `${Date.now()}-${cleanFileName}`;
         const filePath = `${activityId}/${fileName}`;
 
+        console.log('Uploading file:', fileName, 'Size:', file.size, 'Type:', file.type);
+
         // رفع الملف إلى Supabase Storage
-        const { error: uploadError } = await supabase.storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
           .from('activity-files')
-          .upload(filePath, file);
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
         if (uploadError) {
           console.error('Error uploading file:', uploadError);
-          toast.error(`فشل في رفع الملف: ${file.name}`);
+          toast.error(`فشل في رفع الملف: ${file.name} - ${uploadError.message}`);
           continue;
         }
+
+        console.log('File uploaded successfully:', uploadData);
 
         // حفظ معلومات الملف في قاعدة البيانات
         const { data: fileData, error: dbError } = await supabase
@@ -60,7 +68,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             activity_id: activityId,
             file_name: file.name,
             file_path: filePath,
-            file_type: file.type,
+            file_type: file.type || 'application/octet-stream',
             file_size: file.size
           })
           .select()
@@ -68,7 +76,12 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
         if (dbError) {
           console.error('Error saving file info:', dbError);
-          toast.error(`فشل في حفظ معلومات الملف: ${file.name}`);
+          toast.error(`فشل في حفظ معلومات الملف: ${file.name} - ${dbError.message}`);
+          
+          // محاولة حذف الملف من Storage إذا فشل حفظ البيانات
+          await supabase.storage
+            .from('activity-files')
+            .remove([filePath]);
           continue;
         }
 
@@ -84,23 +97,16 @@ const FileUpload: React.FC<FileUploadProps> = ({
       toast.error('حدث خطأ أثناء رفع الملفات');
     } finally {
       setUploading(false);
+      // إعادة تعيين قيمة input لتمكين رفع نفس الملف مرة أخرى
+      if (event.target) {
+        event.target.value = '';
+      }
     }
   }, [activityId, files, onFilesChange]);
 
   const handleDeleteFile = useCallback(async (file: ActivityFile) => {
     try {
-      // حذف الملف من Storage
-      const { error: storageError } = await supabase.storage
-        .from('activity-files')
-        .remove([file.file_path]);
-
-      if (storageError) {
-        console.error('Error deleting from storage:', storageError);
-        toast.error('فشل في حذف الملف من التخزين');
-        return;
-      }
-
-      // حذف معلومات الملف من قاعدة البيانات
+      // حذف معلومات الملف من قاعدة البيانات أولاً
       const { error: dbError } = await supabase
         .from('activity_files')
         .delete()
@@ -108,8 +114,18 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
       if (dbError) {
         console.error('Error deleting file info:', dbError);
-        toast.error('فشل في حذف معلومات الملف');
+        toast.error(`فشل في حذف معلومات الملف: ${dbError.message}`);
         return;
+      }
+
+      // حذف الملف من Storage
+      const { error: storageError } = await supabase.storage
+        .from('activity-files')
+        .remove([file.file_path]);
+
+      if (storageError) {
+        console.error('Error deleting from storage:', storageError);
+        // لا نعرض خطأ هنا لأن الملف قد يكون محذوف مسبقاً
       }
 
       onFilesChange(files.filter(f => f.id !== file.id));
