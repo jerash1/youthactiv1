@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from "react";
 import { Upload, X, File, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         // تنظيف اسم الملف من الأحرف الخاصة
         const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const fileExt = cleanFileName.split('.').pop();
-        const fileName = `${Date.now()}-${cleanFileName}`;
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}-${cleanFileName}`;
         const filePath = `${activityId}/${fileName}`;
 
         console.log('Uploading file:', fileName, 'Size:', file.size, 'Type:', file.type);
@@ -50,16 +51,17 @@ const FileUpload: React.FC<FileUploadProps> = ({
           .from('activity-files')
           .upload(filePath, file, {
             cacheControl: '3600',
-            upsert: false
+            upsert: false,
+            contentType: file.type
           });
 
         if (uploadError) {
-          console.error('Error uploading file:', uploadError);
+          console.error('Storage upload error:', uploadError);
           toast.error(`فشل في رفع الملف: ${file.name} - ${uploadError.message}`);
           continue;
         }
 
-        console.log('File uploaded successfully:', uploadData);
+        console.log('File uploaded successfully to storage:', uploadData);
 
         // حفظ معلومات الملف في قاعدة البيانات
         const { data: fileData, error: dbError } = await supabase
@@ -75,16 +77,21 @@ const FileUpload: React.FC<FileUploadProps> = ({
           .single();
 
         if (dbError) {
-          console.error('Error saving file info:', dbError);
+          console.error('Database insert error:', dbError);
           toast.error(`فشل في حفظ معلومات الملف: ${file.name} - ${dbError.message}`);
           
           // محاولة حذف الملف من Storage إذا فشل حفظ البيانات
-          await supabase.storage
-            .from('activity-files')
-            .remove([filePath]);
+          try {
+            await supabase.storage
+              .from('activity-files')
+              .remove([filePath]);
+          } catch (cleanupError) {
+            console.error('Cleanup error:', cleanupError);
+          }
           continue;
         }
 
+        console.log('File info saved to database:', fileData);
         uploadedFiles.push(fileData);
       }
 
@@ -106,6 +113,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
   const handleDeleteFile = useCallback(async (file: ActivityFile) => {
     try {
+      console.log('Deleting file:', file.file_name, 'Path:', file.file_path);
+
       // حذف معلومات الملف من قاعدة البيانات أولاً
       const { error: dbError } = await supabase
         .from('activity_files')
@@ -113,7 +122,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         .eq('id', file.id);
 
       if (dbError) {
-        console.error('Error deleting file info:', dbError);
+        console.error('Database delete error:', dbError);
         toast.error(`فشل في حذف معلومات الملف: ${dbError.message}`);
         return;
       }
@@ -124,8 +133,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
         .remove([file.file_path]);
 
       if (storageError) {
-        console.error('Error deleting from storage:', storageError);
-        // لا نعرض خطأ هنا لأن الملف قد يكون محذوف مسبقاً
+        console.error('Storage delete error:', storageError);
+        // لا نعرض خطأ هنا لأن الملف قد يكون محذوف مسبقاً من Storage
       }
 
       onFilesChange(files.filter(f => f.id !== file.id));
@@ -148,6 +157,13 @@ const FileUpload: React.FC<FileUploadProps> = ({
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const getFileUrl = (filePath: string) => {
+    const { data } = supabase.storage
+      .from('activity-files')
+      .getPublicUrl(filePath);
+    return data.publicUrl;
   };
 
   return (
@@ -188,6 +204,16 @@ const FileUpload: React.FC<FileUploadProps> = ({
                   <p className="text-xs text-gray-500">
                     {formatFileSize(file.file_size)} • {new Date(file.uploaded_at || '').toLocaleDateString('ar')}
                   </p>
+                  {file.file_type.startsWith('image/') && (
+                    <a 
+                      href={getFileUrl(file.file_path)} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      عرض الصورة
+                    </a>
+                  )}
                 </div>
               </div>
               {!disabled && (
