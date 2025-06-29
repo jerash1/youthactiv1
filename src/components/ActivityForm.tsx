@@ -7,6 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
+import FileUpload from "./FileUpload";
+import { supabase } from "@/integrations/supabase/client";
+
+interface ActivityFile {
+  id: string;
+  file_name: string;
+  file_path: string;
+  file_type: string;
+  file_size: number | null;
+  uploaded_at: string | null;
+}
 
 interface ActivityFormProps {
   activity?: Activity;
@@ -29,6 +40,8 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ activity, isEditing = false
   });
   
   const [submitting, setSubmitting] = useState(false);
+  const [activityFiles, setActivityFiles] = useState<ActivityFile[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
 
   useEffect(() => {
     if (isEditing && activity) {
@@ -42,14 +55,37 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ activity, isEditing = false
         description: activity.description || "",
         expectedParticipants: activity.expectedParticipants || 1,
       });
+      
+      // جلب الملفات المرتبطة بالنشاط
+      loadActivityFiles(activity.id);
     } else if (availableCenters.length > 0) {
-      // تعيين المركز الافتراضي إذا كان هناك مراكز متاحة
       setFormValues(prev => ({
         ...prev,
         center: availableCenters[0].name
       }));
     }
   }, [isEditing, activity, availableCenters]);
+
+  const loadActivityFiles = async (activityId: string) => {
+    setLoadingFiles(true);
+    try {
+      const { data, error } = await supabase
+        .from('activity_files')
+        .select('*')
+        .eq('activity_id', activityId)
+        .order('uploaded_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading files:', error);
+      } else {
+        setActivityFiles(data || []);
+      }
+    } catch (error) {
+      console.error('Error loading files:', error);
+    } finally {
+      setLoadingFiles(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -81,6 +117,8 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ activity, isEditing = false
       </div>
     );
   }
+
+  const showFileUpload = isEditing && activity && formValues.status === "completed";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -200,6 +238,22 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ activity, isEditing = false
           rows={4}
         />
       </div>
+
+      {showFileUpload && (
+        <div className="border-t pt-6">
+          {loadingFiles ? (
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <FileUpload
+              activityId={activity.id}
+              files={activityFiles}
+              onFilesChange={setActivityFiles}
+            />
+          )}
+        </div>
+      )}
 
       <div className="flex space-x-4 space-x-reverse">
         <Button 
