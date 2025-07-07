@@ -177,7 +177,7 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ activity, isEditing = false
             className="w-full p-2 border rounded-md bg-white"
           >
             <option value="preparing">في مرحلة الإعداد</option>
-            <option value="in_progress">النشاط قيد التنفيذ</option>
+            <option value="in_progress">قيد التنفيذ</option>
             <option value="completed">مكتمل</option>
             <option value="cancelled">تم إلغاء النشاط</option>
           </select>

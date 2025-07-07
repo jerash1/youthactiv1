@@ -4,6 +4,7 @@ import { Upload, X, File, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import ImageThumbnail from "./ImageThumbnail";
 
 interface ActivityFile {
   id: string;
@@ -111,7 +112,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
     }
   }, [activityId, files, onFilesChange]);
 
-  const handleDeleteFile = useCallback(async (file: ActivityFile) => {
+  const handleDeleteFile = useCallback(async (fileId: string) => {
+    const file = files.find(f => f.id === fileId);
+    if (!file) return;
+
     try {
       console.log('Deleting file:', file.file_name, 'Path:', file.file_path);
 
@@ -145,27 +149,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
     }
   }, [files, onFilesChange]);
 
-  const getFileIcon = (fileType: string) => {
-    if (fileType.startsWith('image/')) {
-      return <Image size={16} className="text-blue-600" />;
-    }
-    return <File size={16} className="text-gray-600" />;
-  };
-
-  const formatFileSize = (bytes: number | null) => {
-    if (!bytes) return '';
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
-  };
-
-  const getFileUrl = (filePath: string) => {
-    const { data } = supabase.storage
-      .from('activity-files')
-      .getPublicUrl(filePath);
-    return data.publicUrl;
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -194,40 +177,14 @@ const FileUpload: React.FC<FileUploadProps> = ({
       </div>
 
       {files.length > 0 ? (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {files.map((file) => (
-            <div key={file.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-              <div className="flex items-center gap-3">
-                {getFileIcon(file.file_type)}
-                <div>
-                  <p className="font-medium text-sm">{file.file_name}</p>
-                  <p className="text-xs text-gray-500">
-                    {formatFileSize(file.file_size)} • {new Date(file.uploaded_at || '').toLocaleDateString('ar')}
-                  </p>
-                  {file.file_type.startsWith('image/') && (
-                    <a 
-                      href={getFileUrl(file.file_path)} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:underline"
-                    >
-                      عرض الصورة
-                    </a>
-                  )}
-                </div>
-              </div>
-              {!disabled && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDeleteFile(file)}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  <X size={14} />
-                </Button>
-              )}
-            </div>
+            <ImageThumbnail
+              key={file.id}
+              file={file}
+              onDelete={!disabled ? handleDeleteFile : undefined}
+              disabled={disabled}
+            />
           ))}
         </div>
       ) : (

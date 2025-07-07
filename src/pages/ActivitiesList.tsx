@@ -37,6 +37,8 @@ const ActivitiesList = () => {
     switch (status) {
       case "preparing":
         return "في مرحلة الإعداد";
+      case "in_progress":
+        return "قيد التنفيذ";
       case "completed":
         return "مكتمل";
       case "cancelled":
@@ -50,6 +52,8 @@ const ActivitiesList = () => {
     switch (status) {
       case "preparing":
         return "bg-blue-100 text-blue-700";
+      case "in_progress":
+        return "bg-orange-100 text-orange-700";
       case "completed":
         return "bg-green-100 text-green-700";
       case "cancelled":
@@ -97,6 +101,7 @@ const ActivitiesList = () => {
               >
                 <option value="">اظهار الكل</option>
                 <option value="preparing">في مرحلة الإعداد</option>
+                <option value="in_progress">قيد التنفيذ</option>
                 <option value="completed">مكتمل</option>
                 <option value="cancelled">ملغي</option>
               </select>

@@ -3,8 +3,9 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useActivities } from "../context/ActivitiesContext";
 import { needsAlert } from "../data/mockData";
-import { Edit, ArrowUp, Calendar, CalendarCheck, CalendarMinus, Download, Image, File } from "lucide-react";
+import { Edit, ArrowUp, Calendar, CalendarCheck, CalendarMinus, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import ImageThumbnail from "../components/ImageThumbnail";
 
 interface ActivityFile {
   id: string;
@@ -53,44 +54,6 @@ const ViewActivity = () => {
     }
   };
 
-  const downloadFile = async (file: ActivityFile) => {
-    try {
-      const { data, error } = await supabase.storage
-        .from('activity-files')
-        .download(file.file_path);
-
-      if (error) {
-        console.error('Error downloading file:', error);
-        return;
-      }
-
-      const url = URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = file.file_name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Download error:', error);
-    }
-  };
-
-  const getFileIcon = (fileType: string) => {
-    if (fileType.startsWith('image/')) {
-      return <Image size={16} className="text-blue-600" />;
-    }
-    return <File size={16} className="text-gray-600" />;
-  };
-
-  const formatFileSize = (bytes: number | null) => {
-    if (!bytes) return '';
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
-  };
-
   if (!activity) {
     return (
       <div className="max-w-4xl mx-auto p-4">
@@ -111,6 +74,8 @@ const ViewActivity = () => {
     switch (activity.status) {
       case "preparing":
         return "في مرحلة الإعداد";
+      case "in_progress":
+        return "قيد التنفيذ";
       case "completed":
         return "مكتمل";
       case "cancelled":
@@ -124,6 +89,8 @@ const ViewActivity = () => {
     switch (activity.status) {
       case "preparing":
         return "bg-blue-100 text-blue-700 border border-blue-200";
+      case "in_progress":
+        return "bg-orange-100 text-orange-700 border border-orange-200";
       case "completed":
         return "bg-green-100 text-green-700 border border-green-200";
       case "cancelled":
@@ -137,6 +104,8 @@ const ViewActivity = () => {
     switch (activity.status) {
       case "preparing":
         return <Calendar size={20} className="ml-2" />;
+      case "in_progress":
+        return <Play size={20} className="ml-2" />;
       case "completed":
         return <CalendarCheck size={20} className="ml-2" />;
       case "cancelled":
@@ -145,6 +114,8 @@ const ViewActivity = () => {
         return <Calendar size={20} className="ml-2" />;
     }
   };
+
+  const showFiles = activity.status === "completed" || activity.status === "in_progress";
 
   return (
     <div className="max-w-4xl mx-auto p-4">
@@ -181,7 +152,7 @@ const ViewActivity = () => {
       <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
         <div className="flex justify-between items-start mb-6">
           <h2 className="text-2xl font-semibold text-gray-800">{activity.name}</h2>
-          <div className="flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getStatusClass()}">
+          <div className={`flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getStatusClass()}`}>
             {getStatusIcon()}
             <span>{getStatusText()}</span>
           </div>
@@ -229,7 +200,7 @@ const ViewActivity = () => {
           </div>
         )}
 
-        {activity.status === "completed" && (
+        {showFiles && (
           <div className="border-t pt-6">
             <h3 className="text-lg font-medium text-gray-800 mb-4">الملفات والصور</h3>
             {loadingFiles ? (
@@ -237,31 +208,18 @@ const ViewActivity = () => {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
               </div>
             ) : activityFiles.length > 0 ? (
-              <div className="grid gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {activityFiles.map((file) => (
-                  <div key={file.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                    <div className="flex items-center gap-3">
-                      {getFileIcon(file.file_type)}
-                      <div>
-                        <p className="font-medium text-sm">{file.file_name}</p>
-                        <p className="text-xs text-gray-500">
-                          {formatFileSize(file.file_size)} • {new Date(file.uploaded_at || '').toLocaleDateString('ar')}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => downloadFile(file)}
-                      className="flex items-center gap-1 text-primary hover:text-primary-dark text-sm font-medium"
-                    >
-                      <Download size={14} />
-                      تحميل
-                    </button>
-                  </div>
+                  <ImageThumbnail
+                    key={file.id}
+                    file={file}
+                    disabled={true}
+                  />
                 ))}
               </div>
             ) : (
               <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed">
-                <File size={32} className="mx-auto mb-2 text-gray-400" />
+                <Calendar size={32} className="mx-auto mb-2 text-gray-400" />
                 <p>لا توجد ملفات مرفوعة لهذا النشاط</p>
               </div>
             )}
